@@ -138,27 +138,26 @@ when that task needs additional agents, split `NEW_PANE` (or another pane in tha
 
 ## spawn a pi agent (always interactive)
 
-always start pi as a persistent interactive process in its pane — run `pi` (optionally with `--model` and `--tools`) with no prompt argument, then send tasks to the pane. never use `pi -p "<prompt>"` or pass the task on the command line: one-shot mode exits after a single response, which kills the pane's agent and makes follow-up questions, corrections, and review requests impossible. interactive mode keeps the agent alive so you and other agents can keep talking to it through the same pane.
+always start pi as a persistent interactive process in its pane — run `pi` (optionally with `--model` and `--tools`) with no prompt argument, then send tasks to the pane. never use `pi -p "<prompt>"` or pass the task on the command line: one-shot mode exits after one response and may remove the pane, preventing follow-ups.
 
 ```bash
 NEW_PANE=$(herdr pane split 1-2 --direction right --no-focus | python3 -c 'import sys,json; print(json.load(sys.stdin)["result"]["pane"]["pane_id"])')
 
-# start pi interactively; add --tools read,grep,find,ls for read-only work
-herdr pane run "$NEW_PANE" "pi --model gpt-5.6-terra"
+# Omit --model unless you have verified that the model is configured and authenticated.
+herdr pane run "$NEW_PANE" "pi --tools read,grep,find,ls"
 
-# wait until the interactive session is ready before sending the task
+# agent_status can become idle before the TUI is ready to accept submitted input.
+# Wait for a startup marker as well as idle before sending the task.
+herdr wait output "$NEW_PANE" --match "Pi can explain its own features" --timeout 15000
 herdr wait agent-status "$NEW_PANE" --status idle --timeout 10000
 
-# send a self-contained initial task
 herdr pane run "$NEW_PANE" "review the test coverage in src/api/ and report gaps"
-
-# confirm pickup — herdr's status detection can lag a moment behind the send
 herdr wait agent-status "$NEW_PANE" --status working --timeout 10000
 ```
 
-then detect completion with the background settle loop in "waiting for an agent to finish" — you are notified the instant the agent leaves `working`, and you stay free to do other work while it runs.
+`pane run` already sends Enter. do not send an extra Enter during the normal flow; it can submit an empty prompt or open a menu after an error. if the `working` confirmation times out, inspect `pane get` and `pane read` immediately. the prompt may still be in the editor because startup raced, or pi may be showing an authentication/configuration error. only send Enter after confirming that the intended prompt is visibly waiting in the editor.
 
-after the agent responds, send every clarification, correction, or follow-up task to the **same pane** with `herdr pane run` — do not spawn a replacement agent. leave the interactive pi process and its pane open until the delegated work and all likely follow-ups are complete.
+then detect completion with the settle loop in "waiting for an agent to finish". after the agent responds, send every clarification or follow-up to the **same pane**. leave the interactive process open until likely follow-ups are complete.
 
 ## wait for output
 
@@ -207,7 +206,7 @@ done
 echo timeout; exit 1
 ```
 
-a `done` transition settles instantly via the wait; `idle` and `blocked` are caught within one 15s chunk. run this loop **in the background** (e.g. the Bash tool's `run_in_background: true`) so your own conversation is never blocked — you get re-invoked the moment the loop exits and can keep doing other work meanwhile.
+a `done` transition settles instantly via the wait; `idle` and `blocked` are caught within one 15s chunk. run this loop in the background when the current harness supports background commands. otherwise use short chunks and return to other work between checks; do not issue one long blocking wait.
 
 interpret the settled status:
 
@@ -329,7 +328,8 @@ start pi interactively (never `pi -p`) so the agent stays alive for follow-ups:
 
 ```bash
 NEW_PANE=$(herdr pane split 1-2 --direction down --no-focus | python3 -c 'import sys,json; print(json.load(sys.stdin)["result"]["pane"]["pane_id"])')
-herdr pane run "$NEW_PANE" "pi --model gpt-5.6-terra"
+herdr pane run "$NEW_PANE" "pi --tools read,grep,find,ls"
+herdr wait output "$NEW_PANE" --match "Pi can explain its own features" --timeout 15000
 herdr wait agent-status "$NEW_PANE" --status idle --timeout 10000
 herdr pane run "$NEW_PANE" "review the test coverage in src/api/"
 herdr wait agent-status "$NEW_PANE" --status working --timeout 10000
@@ -364,6 +364,7 @@ herdr pane read 1-1 --source recent --lines 100
 - `pane read --source recent-unwrapped` is useful when you want to inspect the same unwrapped transcript that `wait output --source recent` matches against.
 - `pane send-text`, `pane send-keys`, and `pane run` print nothing on success.
 - parse ids from `workspace create`, `tab create`, and `pane split` responses when you need new ids. `workspace create` returns `result.workspace`, `result.tab`, and `result.root_pane`. `tab create` returns `result.tab` and `result.root_pane`. for `pane split`, the new pane id is at `result.pane.pane_id`.
+- a pane may disappear when its foreground process exits, especially after accidental one-shot `pi -p` usage. re-run `pane list` instead of reusing an old id after any exit or close.
 - use `pane read` for current output that already exists. use `wait output` for future output you expect next.
 - `--no-focus` on split, tab create, and workspace create keeps your current terminal context focused.
 - without `--label`, workspace create keeps cwd-based naming and tab create keeps numbered naming.
