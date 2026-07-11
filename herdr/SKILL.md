@@ -136,6 +136,30 @@ herdr pane run "$NEW_PANE" "npm run dev"
 
 when that task needs additional agents, split `NEW_PANE` (or another pane in that same tab) and start `pi` in the resulting pane. keep all agents for the task in that tab.
 
+## spawn a pi agent (always interactive)
+
+always start pi as a persistent interactive process in its pane — run `pi` (optionally with `--model` and `--tools`) with no prompt argument, then send tasks to the pane. never use `pi -p "<prompt>"` or pass the task on the command line: one-shot mode exits after a single response, which kills the pane's agent and makes follow-up questions, corrections, and review requests impossible. interactive mode keeps the agent alive so you and other agents can keep talking to it through the same pane.
+
+```bash
+NEW_PANE=$(herdr pane split 1-2 --direction right --no-focus | python3 -c 'import sys,json; print(json.load(sys.stdin)["result"]["pane"]["pane_id"])')
+
+# start pi interactively; add --tools read,grep,find,ls for read-only work
+herdr pane run "$NEW_PANE" "pi --model gpt-5.6-terra"
+
+# wait until the interactive session is ready before sending the task
+herdr wait agent-status "$NEW_PANE" --status idle --timeout 10000
+
+# send a self-contained initial task
+herdr pane run "$NEW_PANE" "review the test coverage in src/api/ and report gaps"
+
+# confirm pickup — herdr's status detection can lag a moment behind the send
+herdr wait agent-status "$NEW_PANE" --status working --timeout 10000
+```
+
+then detect completion with the background settle loop in "waiting for an agent to finish" — you are notified the instant the agent leaves `working`, and you stay free to do other work while it runs.
+
+after the agent responds, send every clarification, correction, or follow-up task to the **same pane** with `herdr pane run` — do not spawn a replacement agent. leave the interactive pi process and its pane open until the delegated work and all likely follow-ups are complete.
+
 ## wait for output
 
 block until specific text appears in a pane. useful for waiting on servers, builds, and tests.
@@ -162,7 +186,33 @@ block until another agent reaches a specific status:
 herdr wait agent-status 1-1 --status done --timeout 60000
 ```
 
+`wait agent-status` is event-driven: it returns the moment the pane hits the target status. the timeout is a ceiling for how long to keep listening, not a delay — a matching status change comes back instantly. it also returns instantly if the pane is *already* at the target status.
+
 use this when you want the same `done` / `idle` distinction the UI shows.
+
+### waiting for an agent to finish
+
+do not pin a single long wait on `--status done`. `done` is transient — it means "finished and not yet viewed", and it flips to `idle` once the pane is looked at — and a `blocked` agent (asking you a question) never reaches `done` at all. a lone `wait --status done --timeout 600000` can therefore sit for the full timeout while the agent finished or blocked long ago.
+
+instead, detect that the agent has **left `working`**. combine short chunked waits on `done` (instant when it fires) with `pane get` polls that also catch `idle` and `blocked`:
+
+```bash
+# after confirming the agent is working
+DEADLINE=$(( $(date +%s) + 1800 ))
+while [ "$(date +%s)" -lt "$DEADLINE" ]; do
+  st=$(herdr pane get "$PANE" | python3 -c 'import sys,json;print(json.load(sys.stdin)["result"]["pane"]["agent_status"])')
+  [ "$st" != "working" ] && { echo "settled: $st"; exit 0; }
+  herdr wait agent-status "$PANE" --status done --timeout 15000 >/dev/null 2>&1 && { echo "settled: done"; exit 0; }
+done
+echo timeout; exit 1
+```
+
+a `done` transition settles instantly via the wait; `idle` and `blocked` are caught within one 15s chunk. run this loop **in the background** (e.g. the Bash tool's `run_in_background: true`) so your own conversation is never blocked — you get re-invoked the moment the loop exits and can keep doing other work meanwhile.
+
+interpret the settled status:
+
+- `done` / `idle` → read the pane and continue the conversation
+- `blocked` → the agent is asking for input: read the pane, answer with `pane run`, confirm it is `working` again, and restart the loop
 
 ## send text or keys to a pane
 
@@ -275,17 +325,34 @@ herdr pane read 1-3 --source recent-unwrapped --lines 40
 
 ### spawn a new agent and give it a task
 
+start pi interactively (never `pi -p`) so the agent stays alive for follow-ups:
+
 ```bash
 NEW_PANE=$(herdr pane split 1-2 --direction down --no-focus | python3 -c 'import sys,json; print(json.load(sys.stdin)["result"]["pane"]["pane_id"])')
-herdr pane run "$NEW_PANE" "pi"
-herdr wait output "$NEW_PANE" --match ">" --timeout 15000
+herdr pane run "$NEW_PANE" "pi --model gpt-5.6-terra"
+herdr wait agent-status "$NEW_PANE" --status idle --timeout 10000
 herdr pane run "$NEW_PANE" "review the test coverage in src/api/"
+herdr wait agent-status "$NEW_PANE" --status working --timeout 10000
+```
+
+### follow up with the same agent
+
+wait for the agent to settle using the background loop from "waiting for an agent to finish" (never a single long `wait --status done`), then keep the conversation in the same pane instead of spawning a new agent:
+
+```bash
+# (settle loop from "waiting for an agent to finish" has exited)
+herdr pane read "$NEW_PANE" --source recent-unwrapped --lines 100
+herdr pane run "$NEW_PANE" "also check the integration tests in tests/api/"
+herdr wait agent-status "$NEW_PANE" --status working --timeout 10000
+# then start the settle loop again in the background
 ```
 
 ### coordinate with another agent
 
+run the settle loop from "waiting for an agent to finish" in the background, then read the pane once it exits:
+
 ```bash
-herdr wait agent-status 1-1 --status done --timeout 120000
+# settle loop exited with "settled: done" (or idle/blocked)
 herdr pane read 1-1 --source recent --lines 100
 ```
 
