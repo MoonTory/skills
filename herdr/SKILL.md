@@ -140,11 +140,22 @@ when that task needs additional agents, split `NEW_PANE` (or another pane in tha
 
 always start pi as a persistent interactive process in its pane — run `pi` (optionally with `--model` and `--tools`) with no prompt argument, then send tasks to the pane. never use `pi -p "<prompt>"` or pass the task on the command line: one-shot mode exits after one response and may remove the pane, preventing follow-ups.
 
+always specify codex models with the full `openai-codex/` provider prefix. a bare model such as `gpt-5.6-sol` can resolve to another provider and fail with a misleading missing-api-key error. available codex model ids are:
+
+- `openai-codex/gpt-5.3-codex-spark`
+- `openai-codex/gpt-5.4`
+- `openai-codex/gpt-5.4-mini`
+- `openai-codex/gpt-5.5`
+- `openai-codex/gpt-5.6-luna`
+- `openai-codex/gpt-5.6-sol`
+- `openai-codex/gpt-5.6-terra`
+
+use `pi --list-models | grep '^openai-codex'` to verify this list if model availability may have changed. omit `--model` to use pi's configured default.
+
 ```bash
 NEW_PANE=$(herdr pane split 1-2 --direction right --no-focus | python3 -c 'import sys,json; print(json.load(sys.stdin)["result"]["pane"]["pane_id"])')
 
-# Omit --model unless you have verified that the model is configured and authenticated.
-herdr pane run "$NEW_PANE" "pi --tools read,grep,find,ls"
+herdr pane run "$NEW_PANE" "pi --model openai-codex/gpt-5.6-terra --tools read,grep,find,ls"
 
 # agent_status can become idle before the TUI is ready to accept submitted input.
 # Wait for a startup marker as well as idle before sending the task.
@@ -328,7 +339,7 @@ start pi interactively (never `pi -p`) so the agent stays alive for follow-ups:
 
 ```bash
 NEW_PANE=$(herdr pane split 1-2 --direction down --no-focus | python3 -c 'import sys,json; print(json.load(sys.stdin)["result"]["pane"]["pane_id"])')
-herdr pane run "$NEW_PANE" "pi --tools read,grep,find,ls"
+herdr pane run "$NEW_PANE" "pi --model openai-codex/gpt-5.6-terra --tools read,grep,find,ls"
 herdr wait output "$NEW_PANE" --match "Pi can explain its own features" --timeout 15000
 herdr wait agent-status "$NEW_PANE" --status idle --timeout 10000
 herdr pane run "$NEW_PANE" "review the test coverage in src/api/"
