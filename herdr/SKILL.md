@@ -111,26 +111,30 @@ herdr pane read 1-1 --source recent --lines 50
 - `--source recent` = recent scrollback as rendered in the pane
 - `--source recent-unwrapped` = recent terminal text with soft wraps joined back together
 
-## split a pane and run a command
+## create a pane or tab for new work
 
-split your pane to the right and keep focus on your current pane:
+first decide whether the request calls for a **pane** or a **tab**:
+
+- if the user explicitly asks for a new tab, create a tab; do not substitute a split pane. give it a short, descriptive `--label` based on the requested work (for example, `api tests` or `review auth`).
+- a requested tab is the work context for that task: start every new agent for that task in its root pane or in panes split from it. do not place those agents in another tab unless the user requests a separate tab.
+- otherwise, create a pane in the current tab when the work should remain visible alongside the current task (for example, a server, tests, or an agent to coordinate with).
+- choose the split direction deliberately. use `down` for a short-lived command or log stream so the main pane retains width; use `right` only when a side-by-side layout is useful or the user requests it. do not default every split to `right`.
+
+create a downward pane while retaining focus, parse its id, then run a command:
 
 ```bash
-herdr pane split 1-2 --direction right --no-focus
-```
-
-that prints json with the new pane nested at `result.pane.pane_id`. parse that value, then run a command in that pane:
-
-```bash
-NEW_PANE=$(herdr pane split 1-2 --direction right --no-focus | python3 -c 'import sys,json; print(json.load(sys.stdin)["result"]["pane"]["pane_id"])')
+NEW_PANE=$(herdr pane split 1-2 --direction down --no-focus | python3 -c 'import sys,json; print(json.load(sys.stdin)["result"]["pane"]["pane_id"])')
 herdr pane run "$NEW_PANE" "npm run dev"
 ```
 
-split downward instead:
+for a requested new tab, create it in the current workspace with a short task-derived label, parse its root pane, and use that pane. add `--no-focus` unless the user asked to switch to the new tab (omit it when they did):
 
 ```bash
-herdr pane split 1-2 --direction down --no-focus
+NEW_PANE=$(herdr tab create --workspace 1 --label "api tests" --no-focus | python3 -c 'import sys,json; print(json.load(sys.stdin)["result"]["root_pane"]["pane_id"])')
+herdr pane run "$NEW_PANE" "npm run dev"
 ```
+
+when that task needs additional agents, split `NEW_PANE` (or another pane in that same tab) and start `pi` in the resulting pane. keep all agents for the task in that tab.
 
 ## wait for output
 
@@ -165,7 +169,7 @@ use this when you want the same `done` / `idle` distinction the UI shows.
 send text without pressing Enter:
 
 ```bash
-herdr pane send-text 1-1 "hello from claude"
+herdr pane send-text 1-1 "hello from pi"
 ```
 
 press Enter or other keys:
@@ -231,7 +235,7 @@ herdr pane close 1-3
 ### run a server and wait until it is ready
 
 ```bash
-NEW_PANE=$(herdr pane split 1-2 --direction right --no-focus | python3 -c 'import sys,json; print(json.load(sys.stdin)["result"]["pane"]["pane_id"])')
+NEW_PANE=$(herdr pane split 1-2 --direction down --no-focus | python3 -c 'import sys,json; print(json.load(sys.stdin)["result"]["pane"]["pane_id"])')
 herdr pane run "$NEW_PANE" "npm run dev"
 herdr wait output "$NEW_PANE" --match "ready" --timeout 30000
 herdr pane read "$NEW_PANE" --source recent --lines 20
@@ -240,10 +244,10 @@ herdr pane read "$NEW_PANE" --source recent --lines 20
 ### run tests in a separate pane and inspect the result
 
 ```bash
-herdr pane split 1-2 --direction down --no-focus
-herdr pane run 1-3 "cargo test"
-herdr wait output 1-3 --match "test result" --timeout 60000
-herdr pane read 1-3 --source recent --lines 30
+NEW_PANE=$(herdr pane split 1-2 --direction down --no-focus | python3 -c 'import sys,json; print(json.load(sys.stdin)["result"]["pane"]["pane_id"])')
+herdr pane run "$NEW_PANE" "cargo test"
+herdr wait output "$NEW_PANE" --match "test result" --timeout 60000
+herdr pane read "$NEW_PANE" --source recent --lines 30
 ```
 
 ### check what another agent is working on
@@ -272,10 +276,10 @@ herdr pane read 1-3 --source recent-unwrapped --lines 40
 ### spawn a new agent and give it a task
 
 ```bash
-herdr pane split 1-2 --direction right --no-focus
-herdr pane run 1-3 "claude"
-herdr wait output 1-3 --match ">" --timeout 15000
-herdr pane run 1-3 "review the test coverage in src/api/"
+NEW_PANE=$(herdr pane split 1-2 --direction down --no-focus | python3 -c 'import sys,json; print(json.load(sys.stdin)["result"]["pane"]["pane_id"])')
+herdr pane run "$NEW_PANE" "pi"
+herdr wait output "$NEW_PANE" --match ">" --timeout 15000
+herdr pane run "$NEW_PANE" "review the test coverage in src/api/"
 ```
 
 ### coordinate with another agent
