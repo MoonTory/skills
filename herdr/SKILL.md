@@ -142,10 +142,6 @@ always start pi as a persistent interactive process in its pane — run `pi` (op
 
 always specify codex models with the full `openai-codex/` provider prefix. a bare model such as `gpt-5.6-sol` can resolve to another provider and fail with a misleading missing-api-key error. available codex model ids are:
 
-- `openai-codex/gpt-5.3-codex-spark`
-- `openai-codex/gpt-5.4`
-- `openai-codex/gpt-5.4-mini`
-- `openai-codex/gpt-5.5`
 - `openai-codex/gpt-5.6-luna`
 - `openai-codex/gpt-5.6-sol`
 - `openai-codex/gpt-5.6-terra`
