@@ -31,7 +31,7 @@ The N candidates will receive the same prompt, so the prompt is the contract. Ge
 
 ## Phase B: Fan out
 
-Read `../references/conventions.md`, then launch all candidates together. In Herdr, put them in separate persistent
+Read `references/conventions.md`, then launch all candidates together. In Herdr, put them in separate persistent
 Pi panes with isolated write locations. Give each the same contract, the shared grounding path, its own output path,
 and instructions to produce both the artifact and a short rationale.
 

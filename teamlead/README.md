@@ -37,8 +37,24 @@ vendor-specific automation, and broad principle catalog.
 
 ## Installation
 
-Keep this directory grouped in the source repo. Each direct child with a `SKILL.md` is one skill. Install or symlink
-the skills with the collection layout intact so their shared references remain valid.
+Keep this directory grouped in the source repo. Each direct child with a `SKILL.md` is one self-contained skill, so
+the CLI can copy any selected skill without relying on files from a sibling or parent directory.
+
+The Skills CLI does not find this collection when it scans the repository root because it does not recurse through
+arbitrary grouping folders. Point it at `teamlead` as the source instead:
+
+```sh
+# From the root of the local skills repository
+npx skills add ./teamlead --list
+npx skills add ./teamlead --skill '*' --agent claude-code --global
+
+# From GitHub, after this collection has been committed and pushed
+npx skills add https://github.com/MoonTory/skills/tree/master/teamlead --list
+npx skills add https://github.com/MoonTory/skills/tree/master/teamlead --skill '*' --agent claude-code --global
+```
+
+The full GitHub URL with `/tree/master/teamlead` is the documented subpath form. Do not use the ambiguous
+`MoonTory/skills/teamlead` shorthand.
 
 The skills expect the existing `herdr` skill when `HERDR_ENV=1`. Outside Herdr they may use the current harness's
 native subagent tools, but they must never pretend they can control Herdr panes.

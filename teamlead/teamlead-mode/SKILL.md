@@ -8,7 +8,7 @@ description: Route non-trivial engineering work through the smallest fitting lea
 Own the result. Agents search, implement, and challenge. The lead holds the user's context, writes the contract,
 makes decisions, reads the resulting work, and verifies every claim that matters.
 
-Read `../references/conventions.md` before choosing a flow.
+Read `references/conventions.md` before choosing a flow.
 
 ## Route the task
 
@@ -29,7 +29,7 @@ Agree with the user on the goal, non-goals, decisions, acceptance checks, autono
 starting expensive work. Reversible research may proceed while the contract is taking shape. A product choice that
 changes the outcome remains a human decision.
 
-Use `../references/brief-template.md` for delegated work. Every brief stands alone and names its write scope.
+Use `references/brief-template.md` for delegated work. Every brief stands alone and names its write scope.
 
 ## Lead loop
 

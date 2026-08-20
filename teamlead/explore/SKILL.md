@@ -42,7 +42,7 @@ Decompose the question into 2-4 parallel exploration angles, each a distinct sli
 
 The right decomposition depends on the question. Use your judgment. Narrow questions: 2 explorers is fine. Broad subsystems: up to 4.
 
-Read `../references/conventions.md` and spawn all explorers together. In Herdr, use separate persistent Pi panes
+Read `references/conventions.md` and spawn all explorers together. In Herdr, use separate persistent Pi panes
 inside the workstream's tab. Outside Herdr, use the current harness's native subagents when available. Explorers are
 read-only. Prefer Terra, Luna, or local Qwen when capable; use a stronger model when the subsystem warrants it.
 

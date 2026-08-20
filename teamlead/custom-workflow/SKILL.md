@@ -13,7 +13,7 @@ phase shape and the user should review that shape before expensive execution.
 
 ## Start
 
-Read `../references/conventions.md`, then add the phases below to the plan.
+Read `references/conventions.md`, then add the phases below to the plan.
 
 ## Phase A: Frame
 

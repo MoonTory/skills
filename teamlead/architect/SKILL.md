@@ -31,7 +31,7 @@ Skip Phase A only when the work is genuinely greenfield with no surrounding syst
 
 Run the **arena** skill with the design-sketch task and the Phase A grounding artifacts. Pass `references/runner-prompt.md` as each runner's prompt. Each candidate produces a design package shaped per `references/rationale-template.md`: the caller's usage written first, then the type sketch, function signatures, module map, and prose rationale derived from it.
 
-Read `../references/conventions.md`. Use at least two different design views. Prefer Sol for exact technical
+Read `references/conventions.md`. Use at least two different design views. Prefer Sol for exact technical
 constraints, Fable or Opus for judgment, and Terra or local Qwen for an independent lane when available.
 
 Design it twice. Require at least two structurally distinct candidates before synthesis, even when the first looks

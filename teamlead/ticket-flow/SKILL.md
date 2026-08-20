@@ -6,7 +6,7 @@ description: Run a bounded bug fix, feature, refactor, or UI change through expl
 # Ticket flow
 
 The lead plans, decides, verifies, and reports. Workers gather facts, implement the decided change, and review it.
-Read `../references/conventions.md` and `../references/brief-template.md` first.
+Read `references/conventions.md` and `references/brief-template.md` first.
 
 ## 1. Frame
 

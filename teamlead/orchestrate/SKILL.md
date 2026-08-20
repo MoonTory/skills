@@ -28,7 +28,7 @@ Open a todolist with the steps below copied in verbatim. A step you skip stays l
 - **Track teamlead.** One per large Herdr tab or independent track, only when the coordinator cannot drain that track
   itself. It owns its unit list, worker briefs, and verifier flow, then returns a compact rollup. More levels cost
   context, so stop at coordinator, track lead, worker.
-- **Worker / verifier.** Read `../references/conventions.md`. Prefer fewer, broader workers. Give every writer an
+- **Worker / verifier.** Read `references/conventions.md`. Prefer fewer, broader workers. Give every writer an
   exclusive worktree, branch, or path set. Run judgment-heavy verification on a different model family from the writer.
 
 Depth stays at coordinator, track, worker. Author the track decomposition per project (build, landing, and verification are common cuts, not a required shape); hard-coded swarm trees were tried and parked as too rigid.

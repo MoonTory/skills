@@ -32,7 +32,7 @@ Write one clear paragraph. Reviewers challenge whether the work achieves the int
 
 ## Step 3, Spawn Reviewers
 
-Read `../references/conventions.md` and launch all reviewers together. Scale from two reviewers for normal ticket
+Read `references/conventions.md` and launch all reviewers together. Scale from two reviewers for normal ticket
 work to four for contested or high-risk changes.
 
 | Subagent | Default model |

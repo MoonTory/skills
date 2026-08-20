@@ -28,7 +28,7 @@ Open a todolist with one entry per phase before launching anything.
 
 ## Phase B: Fan out
 
-Read `../references/conventions.md`, then launch all workers together when the harness permits it. In Herdr, start
+Read `references/conventions.md`, then launch all workers together when the harness permits it. In Herdr, start
 each as a persistent Pi agent inside the workstream's tab. Use read-only tools unless the slice explicitly owns a
 writable output.
 
