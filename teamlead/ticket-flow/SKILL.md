@@ -14,6 +14,10 @@ Confirm the requested outcome, non-goals, acceptance checks, and whether the use
 change. Inspect repository instructions and dirty state. Extract a ticket ID from the branch only when the project
 uses one; never invent it.
 
+If the flow will delegate inside Herdr, create one short task-named tab now. Start the first worker in its root pane
+and keep every later explorer, implementer, reviewer, fix, and re-review in that tab. Do not create the tab when the
+lead will do the whole task directly.
+
 ## 2. Explore
 
 Start one or two read-only explorers when the code path or cause is not already known. Ask for paths and lines, the

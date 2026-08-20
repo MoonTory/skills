@@ -1,6 +1,6 @@
 ---
 name: herdr
-description: "Control herdr from inside it. Manage workspaces and tabs, split panes, spawn agents, read output, and wait for state changes — all via CLI commands that talk to the running herdr instance over a local unix socket. Use when running inside herdr (HERDR_ENV=1)."
+description: "Control herdr from inside it. Manage workspaces and named task tabs, keep workflow agents in the correct tab, split panes, spawn agents, read output, and wait for state changes through the local CLI. Use when running inside herdr (HERDR_ENV=1)."
 ---
 
 # herdr — agent skill
@@ -116,6 +116,8 @@ herdr pane read 1-1 --source recent --lines 50
 first decide whether the request calls for a **pane** or a **tab**:
 
 - if the user explicitly asks for a new tab, create a tab; do not substitute a split pane. give it a short, descriptive `--label` based on the requested work (for example, `api tests` or `review auth`).
+- if the active workflow requires a task or workstream tab, follow that policy even when the user did not explicitly
+  ask for a tab. teamlead workflows normally allocate one named tab before their first delegated agent.
 - a requested tab is the work context for that task: start every new agent for that task in its root pane or in panes split from it. do not place those agents in another tab unless the user requests a separate tab.
 - otherwise, create a pane in the current tab when the work should remain visible alongside the current task (for example, a server, tests, or an agent to coordinate with).
 - choose the split direction deliberately. use `down` for a short-lived command or log stream so the main pane retains width; use `right` only when a side-by-side layout is useful or the user requests it. do not default every split to `right`.
@@ -135,6 +137,35 @@ herdr pane run "$NEW_PANE" "npm run dev"
 ```
 
 when that task needs additional agents, split `NEW_PANE` (or another pane in that same tab) and start `pi` in the resulting pane. keep all agents for the task in that tab.
+
+### allocate one named tab for a workflow
+
+when a workflow owns a task tab, create it once before the first agent. use a short task label, not a phase or agent
+role. include a ticket id when it helps identify the work. examples: `ADM-142 filters`, `settings form`, and
+`auth refresh`; avoid `explore`, `review`, and `agent 1`.
+
+determine the current workspace from live herdr output. create the tab with `--no-focus` so the lead stays in its
+own pane, then parse both ids from the same response:
+
+```bash
+TAB_JSON=$(herdr tab create --workspace "$WORKSPACE_ID" --label "$TASK_LABEL" --no-focus)
+TASK_TAB=$(printf '%s' "$TAB_JSON" | python3 -c 'import sys,json; print(json.load(sys.stdin)["result"]["tab"]["tab_id"])')
+TASK_ROOT=$(printf '%s' "$TAB_JSON" | python3 -c 'import sys,json; print(json.load(sys.stdin)["result"]["root_pane"]["pane_id"])')
+```
+
+start the first interactive agent in `TASK_ROOT`. for each later agent, split `TASK_ROOT` or another confirmed pane
+from `TASK_TAB`; never split the lead's pane for that workflow:
+
+```bash
+NEXT_PANE=$(herdr pane split "$TASK_ROOT" --direction right --no-focus | python3 -c 'import sys,json; print(json.load(sys.stdin)["result"]["pane"]["pane_id"])')
+```
+
+reuse `TASK_TAB` through exploration, implementation, review, fixes, and re-review. do not create one tab per phase
+or agent. if the workflow has independent long-running tracks, it may allocate one named tab per track and must keep
+each track's teamlead and workers in that tab.
+
+tab and pane ids are live ids. after a close, restart, or long handoff, resolve them again with `tab list` and
+`pane list` before placing more work.
 
 ## spawn a pi agent (always interactive)
 

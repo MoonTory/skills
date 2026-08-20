@@ -3,8 +3,8 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "We have a scoped API bug in this repo. Use my normal teamlead flow and get it fixed, but keep the work proportional to a ticket-sized change.",
-      "expected_output": "Routes to ticket-flow, uses read-only exploration only if needed, gives one implementer a bounded brief, verifies the diff, and gets a fresh review without starting program-level orchestration.",
+      "prompt": "Implement a small, scoped feature in this repo using my normal teamlead flow. Keep it proportional, but delegate the implementation and review. The lead is running inside Herdr.",
+      "expected_output": "Routes to ticket-flow without program-level orchestration. Before the first worker, creates exactly one short task-named Herdr tab, starts the first worker in its root pane, and keeps every explorer, implementer, reviewer, fix, and re-review in that tab. No worker pane is added to the lead's original tab and no tab is created per phase or agent.",
       "files": []
     },
     {

@@ -31,6 +31,13 @@ changes the outcome remains a human decision.
 
 Use `references/brief-template.md` for delegated work. Every brief stands alone and names its write scope.
 
+## Place the team in Herdr
+
+When this workflow delegates inside Herdr, allocate its named task tab before starting the first agent. Start the
+first worker in the tab's root pane and split all later explorers, implementers, and reviewers from panes in that
+same tab. Reuse it for the whole workflow; do not split workers into the lead's original tab or create a tab per
+phase. The detailed naming, placement, and exception rules are in `references/conventions.md`.
+
 ## Lead loop
 
 - Keep useful work moving while agents run.
