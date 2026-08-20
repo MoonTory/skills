@@ -1,0 +1,29 @@
+{
+  "skill_name": "teamlead",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "We have a scoped API bug in this repo. Use my normal teamlead flow and get it fixed, but keep the work proportional to a ticket-sized change.",
+      "expected_output": "Routes to ticket-flow, uses read-only exploration only if needed, gives one implementer a bounded brief, verifies the diff, and gets a fresh review without starting program-level orchestration.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "I want to add a plugin lifecycle API but the ownership and type shape are still unclear. Research it with me first and show me competing plans before any implementation.",
+      "expected_output": "Routes through explore and architect or arena, keeps implementation paused, produces concrete caller-first shapes, and leaves the product choice to the user.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Own this multi-week migration while I check in twice a day. There are several independent tracks, stacked PRs, and workers may need replacement.",
+      "expected_output": "Routes to orchestrate, creates durable state and complete briefs, pilots one unit, uses rolling workers with one writer per branch, separates verification, and batches human gates.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "The UI implementation is technically done but I do not like it. I will test it and send screenshots; do not burn tokens on a large automated screenshot suite.",
+      "expected_output": "Treats human visual feedback as the product gate, keeps agents on narrow edits and focused checks, and avoids declaring success from technical checks alone.",
+      "files": []
+    }
+  ]
+}
