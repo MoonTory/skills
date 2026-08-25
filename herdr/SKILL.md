@@ -186,11 +186,12 @@ herdr pane run "$NEW_PANE" "pi --model openai-codex/gpt-5.6-terra --tools read,g
 
 # agent_status can become idle before the TUI is ready to accept submitted input.
 # Wait for a startup marker as well as idle before sending the task.
-herdr wait output "$NEW_PANE" --match "Pi can explain its own features" --timeout 15000
-herdr wait agent-status "$NEW_PANE" --status idle --timeout 10000
+herdr pane wait-output "$NEW_PANE" --match "Pi can explain its own features" --timeout 15000
+herdr agent wait "$NEW_PANE" --until idle --timeout 10000
 
-herdr pane run "$NEW_PANE" "review the test coverage in src/api/ and report gaps"
-herdr wait agent-status "$NEW_PANE" --status working --timeout 10000
+herdr agent prompt "$NEW_PANE" "review the test coverage in src/api/ and report gaps" --wait --until working --timeout 20000
+# `agent prompt --wait --until working` submits and confirms the turn started in one call. a `pane run` sent
+# before the TUI is ready is silently dropped (the agent stays idle at revision 1), so prefer `agent prompt` for task text.
 ```
 
 `pane run` already sends Enter. do not send an extra Enter during the normal flow; it can submit an empty prompt or open a menu after an error. if the `working` confirmation times out, inspect `pane get` and `pane read` immediately. the prompt may still be in the editor because startup raced, or pi may be showing an authentication/configuration error. only send Enter after confirming that the intended prompt is visibly waiting in the editor.
@@ -204,13 +205,13 @@ block until specific text appears in a pane. useful for waiting on servers, buil
 for `--source recent`, matching uses unwrapped recent terminal text, so pane width and soft wrapping do not break matches. `pane read --source recent` still shows the pane as rendered. if you want to inspect the same transcript that the waiter matches, use `pane read --source recent-unwrapped`.
 
 ```bash
-herdr wait output 1-3 --match "ready on port 3000" --timeout 30000
+herdr pane wait-output 1-3 --match "ready on port 3000" --timeout 30000
 ```
 
 with regex:
 
 ```bash
-herdr wait output 1-3 --match "server.*ready" --regex --timeout 30000
+herdr pane wait-output 1-3 --match "server.*ready" --regex --timeout 30000
 ```
 
 if it times out, exit code is `1`.
@@ -220,10 +221,10 @@ if it times out, exit code is `1`.
 block until another agent reaches a specific status:
 
 ```bash
-herdr wait agent-status 1-1 --status done --timeout 60000
+herdr agent wait 1-1 --until done --timeout 60000
 ```
 
-`wait agent-status` is event-driven: it returns the moment the pane hits the target status. the timeout is a ceiling for how long to keep listening, not a delay — a matching status change comes back instantly. it also returns instantly if the pane is *already* at the target status.
+`agent wait` is event-driven: it returns the moment the pane hits the target status. the timeout is a ceiling for how long to keep listening, not a delay — a matching status change comes back instantly. it also returns instantly if the pane is *already* at the target status.
 
 use this when you want the same `done` / `idle` distinction the UI shows.
 
@@ -239,7 +240,7 @@ DEADLINE=$(( $(date +%s) + 1800 ))
 while [ "$(date +%s)" -lt "$DEADLINE" ]; do
   st=$(herdr pane get "$PANE" | python3 -c 'import sys,json;print(json.load(sys.stdin)["result"]["pane"]["agent_status"])')
   [ "$st" != "working" ] && { echo "settled: $st"; exit 0; }
-  herdr wait agent-status "$PANE" --status done --timeout 15000 >/dev/null 2>&1 && { echo "settled: done"; exit 0; }
+  herdr agent wait "$PANE" --until done --timeout 15000 >/dev/null 2>&1 && { echo "settled: done"; exit 0; }
 done
 echo timeout; exit 1
 ```
@@ -324,7 +325,7 @@ herdr pane close 1-3
 ```bash
 NEW_PANE=$(herdr pane split 1-2 --direction down --no-focus | python3 -c 'import sys,json; print(json.load(sys.stdin)["result"]["pane"]["pane_id"])')
 herdr pane run "$NEW_PANE" "npm run dev"
-herdr wait output "$NEW_PANE" --match "ready" --timeout 30000
+herdr pane wait-output "$NEW_PANE" --match "ready" --timeout 30000
 herdr pane read "$NEW_PANE" --source recent --lines 20
 ```
 
@@ -333,7 +334,7 @@ herdr pane read "$NEW_PANE" --source recent --lines 20
 ```bash
 NEW_PANE=$(herdr pane split 1-2 --direction down --no-focus | python3 -c 'import sys,json; print(json.load(sys.stdin)["result"]["pane"]["pane_id"])')
 herdr pane run "$NEW_PANE" "cargo test"
-herdr wait output "$NEW_PANE" --match "test result" --timeout 60000
+herdr pane wait-output "$NEW_PANE" --match "test result" --timeout 60000
 herdr pane read "$NEW_PANE" --source recent --lines 30
 ```
 
@@ -353,7 +354,7 @@ use this pattern when you need to coordinate with a sibling pane:
 herdr pane read 1-3 --source recent --lines 40
 
 # wait only for the next output you expect
-herdr wait output 1-3 --match "ready" --timeout 30000
+herdr pane wait-output 1-3 --match "ready" --timeout 30000
 
 # if you need to inspect the same transcript the waiter matched,
 # read the unwrapped recent text directly
@@ -367,10 +368,10 @@ start pi interactively (never `pi -p`) so the agent stays alive for follow-ups:
 ```bash
 NEW_PANE=$(herdr pane split 1-2 --direction down --no-focus | python3 -c 'import sys,json; print(json.load(sys.stdin)["result"]["pane"]["pane_id"])')
 herdr pane run "$NEW_PANE" "pi --model openai-codex/gpt-5.6-terra --tools read,grep,find,ls"
-herdr wait output "$NEW_PANE" --match "Pi can explain its own features" --timeout 15000
-herdr wait agent-status "$NEW_PANE" --status idle --timeout 10000
+herdr pane wait-output "$NEW_PANE" --match "Pi can explain its own features" --timeout 15000
+herdr agent wait "$NEW_PANE" --until idle --timeout 10000
 herdr pane run "$NEW_PANE" "review the test coverage in src/api/"
-herdr wait agent-status "$NEW_PANE" --status working --timeout 10000
+herdr agent wait "$NEW_PANE" --until working --timeout 10000
 ```
 
 ### follow up with the same agent
@@ -381,7 +382,7 @@ wait for the agent to settle using the background loop from "waiting for an agen
 # (settle loop from "waiting for an agent to finish" has exited)
 herdr pane read "$NEW_PANE" --source recent-unwrapped --lines 100
 herdr pane run "$NEW_PANE" "also check the integration tests in tests/api/"
-herdr wait agent-status "$NEW_PANE" --status working --timeout 10000
+herdr agent wait "$NEW_PANE" --until working --timeout 10000
 # then start the settle loop again in the background
 ```
 
@@ -396,14 +397,14 @@ herdr pane read 1-1 --source recent --lines 100
 
 ## notes
 
-- `workspace list`, `workspace create`, `tab list`, `tab create`, `tab get`, `tab focus`, `tab rename`, `tab close`, `pane list`, `pane get`, `pane split`, `wait output`, and `wait agent-status` print json on success.
+- `workspace list`, `workspace create`, `tab list`, `tab create`, `tab get`, `tab focus`, `tab rename`, `tab close`, `pane list`, `pane get`, `pane split`, `pane wait-output`, `agent prompt`, and `agent wait` print json on success.
 - `pane read` prints text, not json.
 - `pane read --format ansi` or `pane read --ansi` returns a rendered ANSI snapshot for TUI feedback loops.
-- `pane read --source recent-unwrapped` is useful when you want to inspect the same unwrapped transcript that `wait output --source recent` matches against.
+- `pane read --source recent-unwrapped` is useful when you want to inspect the same unwrapped transcript that `pane wait-output --source recent` matches against.
 - `pane send-text`, `pane send-keys`, and `pane run` print nothing on success.
 - parse ids from `workspace create`, `tab create`, and `pane split` responses when you need new ids. `workspace create` returns `result.workspace`, `result.tab`, and `result.root_pane`. `tab create` returns `result.tab` and `result.root_pane`. for `pane split`, the new pane id is at `result.pane.pane_id`.
 - a pane may disappear when its foreground process exits, especially after accidental one-shot `pi -p` usage. re-run `pane list` instead of reusing an old id after any exit or close.
-- use `pane read` for current output that already exists. use `wait output` for future output you expect next.
+- use `pane read` for current output that already exists. use `pane wait-output` for future output you expect next.
 - `--no-focus` on split, tab create, and workspace create keeps your current terminal context focused.
 - without `--label`, workspace create keeps cwd-based naming and tab create keeps numbered naming.
 - `--label` on tab create and workspace create applies the custom name immediately.

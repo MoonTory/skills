@@ -21,8 +21,8 @@ lead will do the whole task directly.
 ## 2. Explore
 
 Start one or two read-only explorers when the code path or cause is not already known. Ask for paths and lines, the
-runtime mechanism, competing explanations, a minimal fix, and risks. A local Qwen comparison lane is useful when it
-is available and cheap. Say `do not implement`.
+runtime mechanism, competing explanations, a minimal fix, and risks. A local Qwen lane runs alongside every explore and
+review fan-out (read-only, hyper-specific brief). Say `do not implement`.
 
 The lead checks the key files and traces the failing path. Explorer agreement is evidence, not proof.
 

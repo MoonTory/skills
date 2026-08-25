@@ -39,8 +39,8 @@ work to four for contested or high-risk changes.
 |----------|---------------|
 | Reviewer A | Sol, technical correctness and architecture |
 | Reviewer B | Fable or Opus, product and API judgment |
-| Reviewer C | Terra or local Qwen, independent low-cost view |
-| Reviewer D | Another available family when the risk earns it |
+| Reviewer C | Local Qwen, always present: read-only, hyper-specific brief, pointed at the worktree (never pasted a diff) |
+| Reviewer D | Terra or Luna, or another family, when the risk earns it |
 
 Every reviewer is read-only, receives the same intent and rubric, and works from a complete diff plus the surrounding
 code it needs. In Herdr, use persistent Pi panes so fixes can return to the same reviewers for a new verdict.

@@ -1,0 +1,41 @@
+{
+  "skill_name": "linear",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "We have a rough request to add saved views to the admin UI. Use Linear to turn it into work for the Adminty project. The requirements are still vague and I have not approved any tickets yet.",
+      "expected_output": "The agent confirms its Linear actor and runtime, reads current project context, keeps vague work in Scoping, proposes clear issues and relationships without creating them, and waits for approval before the batch write.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Pick up ADM-142 as the Builder, implement it, and keep Linear current while you work. The issue has acceptance checks and one dependency.",
+      "expected_output": "The agent verifies that the authenticated actor is Builder, reads ADM-142 and its dependency, moves only the active issue through In Progress to In Review, records real validation evidence, and does not approve or close its own work.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Review ADM-142. The code looks plausible, but one acceptance criterion has no evidence and the MCP session is authenticated as Planner rather than Reviewer.",
+      "expected_output": "The agent reports the role mismatch, performs only safe reads, does not write a review or change status under Planner, and explains that a Reviewer-authenticated session is required before the Linear mutation.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "The issue structure for separating the theme system is approved. As Planner, create one durable plan for the Adminty project and link the four issues to it. Keep the tickets concise, and do not paste the plan into comments. There may already be an older plan document.",
+      "expected_output": "The agent verifies its Planner identity, searches for an existing canonical plan before writing, updates it by document ID or creates one project-parented `Plan — <outcome>` document with exactly one parent, uses supported Linear Markdown and the planning template, links the issues without duplicating the plan, and reads back the document and relations to verify the write.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "You are the lead session authenticated as me. A delegated implementation agent without Linear access just finished ADM-207 in a repository that has no published remote, and during the work you decided to drop a deprecated export the ticket did not mention. Bring Linear up to date.",
+      "expected_output": "The agent writes under the human identity as Owner, records the implementation evidence itself with attribution to the delegated agent, cites local commit hashes, tags, and check results instead of inventing PR or branch links, records the export-drop decision on the issue marked as open to the user's veto, and does not claim a role identity it does not hold.",
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "This project tracks work in a hand-maintained board.md that the owner says is still the source of truth while they trial Linear. They ask you to copy two queued items into Linear as issues.",
+      "expected_output": "The agent treats board.md as canonical during the transition, mirrors the two items into Linear deliberately with cross-references in both records, does not silently migrate or stop updating the board, and does not rewrite the rest of the board into Linear without instruction.",
+      "files": []
+    }
+  ]
+}

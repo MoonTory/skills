@@ -14,7 +14,11 @@ with this collection.
 
 - Lead: holds user context, writes contracts and briefs, makes decisions, verifies claims, and reports to the user.
 - Teamlead: owns one large workstream or Herdr tab. Use only when the parent lead cannot drain that track itself.
-- Explorer/planner: read-only. Include a local Qwen lane when useful and available.
+- Explorer/planner: read-only. Always add a local Qwen lane beside every explorer and planner fan-out
+  (`pi --model local5080/qwen/qwen3.8-27b --thinking low --tools read,grep,find,ls`; free; never let it
+  run at its default xhigh thinking — it is slow and verbose). Qwen rules: a hyper-specific
+  brief (exact files, exact question, findings-only output), read-only tools only, never paste a diff into its
+  prompt or ask it to echo files, at most two Qwen panes live, read its report from the pane.
 - Implementer: one writer with exclusive scope.
 - Reviewer: fresh and read-only, with no stake in the implementation.
 
@@ -38,7 +42,8 @@ hard a problem the model can handle without help. Taste covers UI, code quality,
 - Use Sol for complex or ambiguous work, architecture, cross-cutting changes, difficult debugging, and technical
   review.
 - Use Fable or Opus when product taste is the main risk. Anything user-facing needs taste of at least 7.
-- A cheap independent review from Luna, Terra, or local Qwen can complement the primary reviewer.
+- Every review fan-out includes a local Qwen reviewer beside the primary reviewers; Luna or Terra can join as
+  a further cheap view. On security reviews Qwen joins but never replaces Opus.
 - Never use Haiku.
 
 The exact Pi command and provider-qualified model ID belong to the installed `herdr` skill. Do not rely on Pi's

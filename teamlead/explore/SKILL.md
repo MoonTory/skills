@@ -44,7 +44,8 @@ The right decomposition depends on the question. Use your judgment. Narrow quest
 
 Read `references/conventions.md` and spawn all explorers together. In Herdr, use separate persistent Pi panes
 inside the workstream's tab. Outside Herdr, use the current harness's native subagents when available. Explorers are
-read-only. Prefer Terra, Luna, or local Qwen when capable; use a stronger model when the subsystem warrants it.
+read-only. Prefer Terra or Luna when capable; use a stronger model when the subsystem warrants it. Always add one
+local Qwen explorer alongside them with a narrow, checkable slice (inventories, import graphs, config line lists).
 
 Each explorer gets the same base prompt from `references/explorer-prompt.md` plus a specific exploration angle naming its slice. Each explorer should:
 - Start broad: Glob for relevant directories, Grep for key types/interfaces/class names
@@ -102,7 +103,7 @@ Run the full explain flow above (Steps 1-4). You must understand the architectur
 ### Step 2. Spawn Critics
 
 After the explanation is complete, spawn two to four read-only critics together. Use different model families when
-possible: Sol for technical correctness, Fable or Opus for judgment, and Terra or local Qwen as a cheap independent
+possible: Sol for technical correctness, Fable or Opus for judgment, and Terra plus local Qwen (always) as cheap independent
 view. Scale the panel to the risk.
 
 Read `references/critic-prompt.md` for the prompt template. Each critic gets:
