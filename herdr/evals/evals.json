@@ -4,7 +4,7 @@
     {
       "id": 1,
       "prompt": "HERDR_ENV=1. You are the Orchestrator and the user authorized delegation. Create one task tab and start the assigned terminal workers there.",
-      "expected_output": "Passes both gates, resolves live Herdr IDs, creates one task-named tab, starts workers through the documented interactive lifecycle, and keeps them in that work context.",
+      "expected_output": "Passes both gates, resolves live Herdr IDs, creates one task-named tab, starts workers through the documented interactive lifecycle with --no-skills and matching skill profiles when available, and keeps them in that work context.",
       "files": []
     },
     {

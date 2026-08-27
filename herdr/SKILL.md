@@ -183,6 +183,13 @@ tab and pane ids are live ids. after a close, restart, or long handoff, resolve 
 
 always start pi as a persistent interactive process in its pane — run `pi` (optionally with `--model` and `--tools`) with no prompt argument, then send tasks to the pane. never use `pi -p "<prompt>"` or pass the task on the command line: one-shot mode exits after one response and may remove the pane, preventing follow-ups.
 
+when pi exposes `--skill-profile`, start a terminal worker with `--no-skills --skill-profile <profile>`. the
+`--no-skills` flag disables normal skill discovery; without it, the selected profile is additive and unrelated skills
+remain visible. match the terminal role to the profile: Explorer → `explore`, Planner → `plan`, Builder → `build`,
+Reviewer → `review`. an active workflow may define a more specific profile, such as a Linear-bound variant. the skill
+profile selects instructions only; keep model choice, tool limits, and any identity-bearing MCP profile as separate
+launch controls.
+
 always specify codex models with the full `openai-codex/` provider prefix. a bare model such as `gpt-5.6-sol` can resolve to another provider and fail with a misleading missing-api-key error. available codex model ids are:
 
 - `openai-codex/gpt-5.6-luna`
@@ -194,7 +201,7 @@ use `pi --list-models | grep '^openai-codex'` to verify this list if model avail
 ```bash
 NEW_PANE=$(herdr pane split 1-2 --direction right --no-focus | python3 -c 'import sys,json; print(json.load(sys.stdin)["result"]["pane"]["pane_id"])')
 
-herdr pane run "$NEW_PANE" "pi --model openai-codex/gpt-5.6-terra --tools read,grep,find,ls"
+herdr pane run "$NEW_PANE" "pi --no-skills --skill-profile review --model openai-codex/gpt-5.6-terra --tools read,grep,find,ls"
 
 # agent_status can become idle before the TUI is ready to accept submitted input.
 # Wait for a startup marker as well as idle before sending the task.
@@ -379,7 +386,7 @@ start pi interactively (never `pi -p`) so the agent stays alive for follow-ups:
 
 ```bash
 NEW_PANE=$(herdr pane split 1-2 --direction down --no-focus | python3 -c 'import sys,json; print(json.load(sys.stdin)["result"]["pane"]["pane_id"])')
-herdr pane run "$NEW_PANE" "pi --model openai-codex/gpt-5.6-terra --tools read,grep,find,ls"
+herdr pane run "$NEW_PANE" "pi --no-skills --skill-profile review --model openai-codex/gpt-5.6-terra --tools read,grep,find,ls"
 herdr pane wait-output "$NEW_PANE" --match "Pi can explain its own features" --timeout 15000
 herdr agent wait "$NEW_PANE" --until idle --timeout 10000
 herdr pane run "$NEW_PANE" "review the test coverage in src/api/"

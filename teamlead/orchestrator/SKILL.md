@@ -41,7 +41,8 @@ separate triggers apply.
 
 Assign each worker exactly one terminal skill: `explore`, `plan`, `build`, or `review`. Give it only the skills and
 tools required for that role. Do not expose this skill, coordinator flow skills, or Herdr control to a terminal
-worker.
+worker. When the active harness offers isolated skill profiles, select the profile whose catalog matches the terminal
+role. The harness skill owns profile names and launch syntax.
 
 Every role brief names its goal, scope, context, acceptance checks, verification, limits, and report shape. It also
 states that the role works directly and returns to the caller instead of spawning or delegating. If a worker reports

@@ -4,7 +4,7 @@
     {
       "id": 1,
       "prompt": "Implement a small scoped feature using my normal Teamlead flow. You are the lead and may delegate implementation and review.",
-      "expected_output": "Passes the authority gate, chooses ticket-flow instead of program orchestration, gives terminal build and review roles bounded briefs, and verifies their reports before returning the result.",
+      "expected_output": "Passes the authority gate, chooses ticket-flow instead of program orchestration, gives terminal build and review roles bounded briefs, selects matching isolated role profiles when the harness supports them, and verifies their reports before returning the result.",
       "files": []
     },
     {

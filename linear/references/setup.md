@@ -93,9 +93,9 @@ Only Orchestrator changes the delegate. Planner, Builder, and Reviewer publish t
 
 If the MCP issue-update tool does not expose `delegate`, `delegateId`, or the equivalent agent field, treat it as a tool limitation. Do not put the app in the human assignee field. Use an authorized Linear API or UI path for delegation, or stop the pilot until the tool supports it.
 
-## Role-isolated Pi profiles
+## Role-isolated Pi MCP profiles
 
-Keep one local profile per Pi role:
+Keep one local MCP identity profile per Pi publishing role:
 
 ```text
 .pi/mcp-profiles/planner.json
@@ -118,13 +118,18 @@ Each exposes one generic server and differs only in the bearer-token variable:
 }
 ```
 
-Launch Pi with exactly one profile:
+Launch Pi with exactly one MCP identity profile and the matching isolated skill profile. These are separate controls:
+`--skill-profile` selects the instruction catalog, while `--mcp-config` selects the Linear actor. These examples assume
+the local skill catalog defines `linear-plan`, `linear-build`, and `linear-review` profiles:
 
 ```bash
-pi --mcp-config .pi/mcp-profiles/planner.json
-pi --mcp-config .pi/mcp-profiles/builder.json
-pi --mcp-config .pi/mcp-profiles/reviewer.json
+pi --no-skills --skill-profile linear-plan --mcp-config .pi/mcp-profiles/planner.json
+pi --no-skills --skill-profile linear-build --mcp-config .pi/mcp-profiles/builder.json
+pi --no-skills --skill-profile linear-review --mcp-config .pi/mcp-profiles/reviewer.json
 ```
+
+An Explorer does not publish Linear evidence. Start it with the plain `explore` skill profile and no role-bearing
+`--mcp-config`.
 
 `--mcp-config` participates in the adapter's config merge; it does not replace the project root `.mcp.json`. Keep role identities out of the root `.mcp.json`, or they may appear in every role session and override the generic `linear` entry. A normal Pi session without a role profile should have no role-bearing Linear connection.
 
