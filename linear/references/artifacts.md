@@ -1,6 +1,47 @@
 # Linear artifacts
 
-Use Linear documents for durable work that does not fit cleanly in an issue description: cross-issue plans, design decisions, investigations, and substantial reviews. Issues remain the source of truth for executable scope, assignment, dependencies, and delivery status.
+Use Linear documents for durable Exploration, Plan, and Review work that does not fit cleanly in an issue description. The issue remains the source of truth for executable scope, assignment, delegation, dependencies, and delivery status.
+
+## Ownership
+
+The durable author must match the authenticated app actor:
+
+- Planner publishes Exploration and Plan documents.
+- Reviewer publishes Review documents.
+- Builder evidence normally belongs in a short Builder handoff comment.
+- Orchestrator links artifacts to issue metadata and uses them as transition evidence; it does not normally publish another role's document.
+
+If the correct role cannot publish, stop the phase and repair the role connection. Do not hide an identity failure by publishing the document through Orchestrator or the human account.
+
+## Naming and scope
+
+Title every artifact:
+
+```text
+<descriptive scope> — <artifact type>
+```
+
+Examples:
+
+- `Active-only style loading — Exploration`
+- `Active-only style loading — Plan`
+- `Active-only style loading — Review`
+- `Style asset delivery hardening — Exploration`
+- `Style asset delivery hardening — Plan`
+- `Style asset delivery hardening — Review`
+
+Lead with the scope so several artifact sets remain easy to scan. Use `Exploration`, `Plan`, or `Review` as the artifact type.
+
+Keep one Exploration, one Plan, and one Review document per distinct scope:
+
+- Update the existing document while fixes stay inside the agreed scope.
+- A material Owner-approved rescope creates a newly named artifact set.
+- Keep the earlier scope's documents intact; they remain the durable record of work already planned, implemented, or reviewed.
+- Add a short opening line linking the new scope to the earlier work, such as `Expanded after Owner validation of [the initial scope](<Linear URL>).`
+- Update the issue contract before implementation of the new scope resumes.
+- Reviewer updates the same Review document through rejection, Builder fixes, recheck, and final verdict.
+
+Never add `v2`, `latest`, `final`, issue-derived suffixes such as `ADM-7B`, or agent-made batch, wave, or worker keys. Do not repeat the issue ID in the title when the document is already parented to that issue.
 
 ## Parent and update rules
 
@@ -12,7 +53,15 @@ The document-save capability supports create and update:
 - Parent an issue-specific artifact to its issue.
 - Do not pass a parent during an update unless the document should move; doing so reparents it.
 
-Search first and keep one canonical document. Rely on Linear's document history rather than adding `v2`, `latest`, or `final` to the title. Store the returned document ID and URL in the related issue or handoff.
+Search first and keep one canonical document for the role, artifact type, and scope. Rely on Linear's document history rather than creating numbered copies. Store the returned document ID and URL in the related issue or handoff.
+
+After every save, read the document back and verify:
+
+- Authenticated author.
+- Title.
+- Content.
+- Parent.
+- Returned URL.
 
 ## Markdown that renders well
 
@@ -30,11 +79,57 @@ Linear converts Markdown into its rich-text editor. Use this stable subset:
 
 Use the actual Linear URL for an issue, project, or document when referring to it. Linear renders pasted Linear URLs as mentions. Do not invent mention syntax or type an unlinked identifier when the returned URL is available.
 
-Avoid raw HTML, deeply nested lists, large decorative tables, emoji used as structure, and diagrams that repeat plain text. Do not use a collapsible section for scope, acceptance criteria, risks, or open questions; those must stay visible.
+Avoid raw HTML, deeply nested lists, large decorative tables, emoji used as structure, and diagrams that repeat plain text. Do not use a collapsible section for scope, acceptance criteria, risks, findings, or open questions; those must stay visible.
 
-## Planning document template
+## Exploration template
 
-Title the document `Plan — <outcome>`. Remove empty or irrelevant sections instead of leaving filler text. The artifact status describes the plan, not implementation progress; Linear issue statuses remain canonical for execution. In the Decisions table, a decision taken by an agent on the user's behalf carries "(open to veto)" until the user confirms it.
+Title: `<descriptive scope> — Exploration`
+
+Remove empty or irrelevant sections instead of leaving filler text.
+
+```markdown
+- **Artifact status:** Draft
+- **Owner:** Planner
+- **Related work:** <project and issue links>
+- **Last reviewed:** YYYY-MM-DD
+
+---
+
+## Question
+
+<What must this exploration resolve?>
+
+## Current evidence
+
+<What the code, product, or earlier work proves today.>
+
+## Constraints
+
+- <Constraint that changes the choice>
+- <Explicit non-goal>
+
+## Options
+
+### <Option>
+
+- Benefits: <what this option improves>
+- Costs: <what this option requires or risks>
+- Evidence: <links, code paths, or observed behavior>
+
+## Recommendation
+
+<Preferred direction and why.>
+
+## Open decisions
+
+- [ ] <Decision, Owner, and when it blocks work>
+```
+
+## Plan template
+
+Title: `<descriptive scope> — Plan`
+
+The artifact status describes the plan, not implementation progress. Linear issue statuses remain canonical for execution.
 
 ```markdown
 - **Artifact status:** Draft
@@ -52,9 +147,14 @@ Title the document `Plan — <outcome>`. Remove empty or irrelevant sections ins
 
 <Why this work exists and the evidence that shaped it.>
 
-## Constraints
+## Scope
 
-- <Constraint that affects the plan>
+### Included
+
+- <Included result>
+
+### Excluded
+
 - <Explicit non-goal>
 
 ## Proposed approach
@@ -67,10 +167,14 @@ Title the document `Plan — <outcome>`. Remove empty or irrelevant sections ins
 | --- | --- | --- | --- |
 | <issue link or proposed title> | <checkable result> | <issue link or None> | Proposed |
 
-## Validation strategy
+## Acceptance criteria
+
+- [ ] <Checkable product or code result>
+
+## Validation
 
 - [ ] <Check that proves the outcome>
-- [ ] <Real-product or integration evidence if needed>
+- [ ] <Owner or real-product validation when needed>
 
 ## Risks and tradeoffs
 
@@ -78,39 +182,64 @@ Title the document `Plan — <outcome>`. Remove empty or irrelevant sections ins
 | ---------------- | ------------------- | ----------------------------- |
 | <risk>           | <what could happen> | <mitigation or accepted cost> |
 
-## Open questions
+## Open decisions
 
-- [ ] <Decision needed, owner, and when it blocks work>
-
-## Decisions
-
-| Date       | Decision   | Reason |
-| ---------- | ---------- | ------ |
-| YYYY-MM-DD | <decision> | <why>  |
-
-+++ Supporting details
-
-<Research notes, alternatives, or other detail that should not obscure the active plan.>
-
-+++
+- [ ] <Decision, Owner, and when it blocks work>
 ```
 
-Add a Mermaid block only when sequence, ownership, or dependencies are hard to scan in prose:
+## Review template
 
-````markdown
-```mermaid
-flowchart LR
-  A[Ready issue] --> B[Builder]
-  B --> C[Reviewer]
-  C --> D[Ready to land]
+Title: `<descriptive scope> — Review`
+
+Keep one Review document for the scope. Update its current verdict and append a review-cycle row when the Builder returns with fixes.
+
+```markdown
+- **Artifact status:** Active
+- **Owner:** Reviewer
+- **Related work:** <issue, branch, and Plan links>
+- **Last reviewed:** YYYY-MM-DD
+
+---
+
+## Verdict
+
+<Pass | Changes required>
+
+## Scope reviewed
+
+<Issue contract, branch or pull request, and implementation round.>
+
+## Findings
+
+### <Finding title>
+
+- Severity: <blocking | non-blocking>
+- Evidence: <specific code, behavior, or check>
+- Required change: <what must change>
+
+## Acceptance and validation
+
+| Requirement | Result      | Evidence                   |
+| ----------- | ----------- | -------------------------- |
+| <criterion> | Pass / Fail | <link or concise evidence> |
+
+## Review cycles
+
+| Date       | Implementation round | Verdict          | Notes           |
+| ---------- | -------------------- | ---------------- | --------------- |
+| YYYY-MM-DD | Initial              | Changes required | <short summary> |
+
+## Final approval
+
+<Complete only after the current implementation round passes.>
 ```
-````
 
-## Keeping the artifact current
+## Keeping artifacts current
 
-- Planner: create the document after the structure is approved, then replace proposed rows with the Linear issues and URLs that were actually created.
-- Builder: read the document before work, but keep active status, blockers, and validation evidence on the issue. Report contradictions instead of silently rewriting the plan.
-- Reviewer: review against the issue contract and linked artifact. Put concise findings on the issue; create a review document only for a report that needs durable sections or several linked findings.
-- Owner: mark the artifact `Approved`, `Superseded`, or another plain state when making that decision, and link its replacement when superseded.
+- Planner updates the Exploration or Plan when evidence or decisions change inside the current scope.
+- A material scope change returns the issue to `Scoping`, updates the issue contract, and starts a new named artifact set.
+- Builder reads the current set before work and reports contradictions instead of silently rewriting Planner or Reviewer documents.
+- Reviewer records every rejected and approved implementation round in the same Review document for that scope.
+- Orchestrator reads the role-authored artifact before changing status or delegation.
 
-After saving, read the document back and confirm the content, parent, and URL. Then check that related issues link the canonical artifact without duplicating it.
+Link the canonical artifact from the issue and short event comment. Do not copy its full content into the issue description or comments.

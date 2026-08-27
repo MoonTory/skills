@@ -10,9 +10,12 @@
 
 | Teamlead | pstack source |
 | --- | --- |
-| `teamlead-mode` | `poteto-mode` routing and selected playbooks |
+| `orchestrator` | `poteto-mode` routing and selected playbooks, plus the local coordinator authority boundary |
 | `ticket-flow` | bug-fix, feature, refactoring, and the prior local `herdr-teamlead` flow |
-| `explore` | `how` |
+| `explore` | terminal read-only role adapted from `how` |
+| `plan` | local terminal planning role extracted from the architecture and ticket flows |
+| `build` | local terminal implementation role extracted from the ticket flow |
+| `review` | local terminal review role extracted from `interrogate` |
 | `architect` | `architect` |
 | `arena` | `arena` |
 | `swarm` | `swarm` |
@@ -28,8 +31,10 @@
 
 ## Main adaptations
 
-- Cursor `Task` and cloud-agent assumptions became harness-neutral delegation rules with a Herdr/Pi path.
-- pstack model defaults became the user's lead, implementation, exploration, and review roles.
+- Cursor `Task` and cloud-agent assumptions became coordinator-only, harness-neutral delegation rules.
+- Terminal Explorer, Planner, Builder, and Reviewer skills cannot spawn or delegate; coordinator skills are installed
+  separately as a capability boundary.
+- Exact model IDs and process lifecycle rules live in the active harness skill rather than Teamlead.
 - pstack names became the terms already used here: teamlead, explore, plan, implement, review, brief, and contract.
 - transcript discovery covers Claude, Pi, and Codex and always stays within the user-approved workspace and time range.
 - human product and visual review is a first-class gate when taste matters.

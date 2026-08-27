@@ -64,7 +64,7 @@ Group the combined signals into sections. Common ones (use only what applies):
 - **Process**: git worktrees, commits, PRs, review/merge tooling.
 - **Skills**: skill-authoring habits, fix-the-skill-first, proposing new skills.
 
-Use `teamlead-mode` as one example of granularity. Do not copy its rules into a personal mode unless the transcripts
+Use `orchestrator` as one example of granularity. Do not copy its rules into a personal mode unless the transcripts
 and user confirm them.
 
 ### 4. Draft the skill
@@ -112,5 +112,5 @@ Run a description-optimization loop only if the skill's trigger accuracy turns o
 
 ## Reference files
 
-- `teamlead-mode`: one example of the output shape.
+- `orchestrator`: one example of the output shape.
 - `skill-creator`: the authoring, test, and iteration process.

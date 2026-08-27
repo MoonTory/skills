@@ -16,3 +16,5 @@ description: Resume an in-flight task from a transcript, checkpoint, branch, wor
 6. Continue from the first unfinished step. Do not rerun exploration or implementation that the evidence proves done.
 
 Report any mismatch between the handoff and live state before acting on the stale claim.
+Keep any replacement handoff in a scratch location outside the repository unless the user explicitly asks the
+project to own it.

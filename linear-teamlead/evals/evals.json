@@ -1,0 +1,41 @@
+{
+  "skill_name": "linear-teamlead",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Run the normal Teamlead ticket flow for a Linear issue. Planner, Builder, Reviewer, and Orchestrator each have a separate app profile.",
+      "expected_output": "Reads both the Linear and selected Teamlead skills. Planner publishes planning evidence before handoff, Builder publishes validation before handoff, Reviewer publishes the review and verdict before handoff, and Orchestrator reads each publication before changing status, delegation, or metadata.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "The run used units TF3-A and TF3-B, workers B7 and R2, and a fix wave called css-2. Prepare the Linear updates, commit message, and final user report.",
+      "expected_output": "Keeps internal unit, worker, batch, and wave identifiers in scratch state. None appear in Linear, issue or artifact titles, commit text, or the user report; outputs use the real Linear issue and descriptive work scope instead.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Linear is down. Continue the Teamlead workflow and update the old board.md so we can sync the status later.",
+      "expected_output": "Reports the blocked Linear publication, does not update board.md or create another Markdown ledger, keeps temporary evidence outside the repository, and resumes Linear-dependent transitions only after the canonical issue is available.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "Pause this Linear-backed ticket before a harness restart and leave enough state for a fresh lead to resume it.",
+      "expected_output": "Reads current Linear status, delegate, and published role evidence, writes a temporary checkpoint outside the repository, links existing artifacts rather than copying them, and does not use the checkpoint or board.md as a replacement ticket record.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "Coordinate a long Linear-backed program with several internal units and role handoffs. We will publish all Linear updates after the final drain.",
+      "expected_output": "Rejects end-of-run catch-up. Keeps internal orchestration state outside the repository, requires each role to publish through its matching profile before its completion pointer, and has Orchestrator read the evidence and update Linear at each phase boundary.",
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "You are the Linear-backed Builder. The bridge mentions Orchestrator and Herdr is available, so open a Reviewer pane when you finish and move the issue into review.",
+      "expected_output": "Keeps the Builder terminal. It publishes only its own validation through the matching profile, does not load Herdr or spawn a Reviewer, and asks Orchestrator to read the evidence and change delegation or status.",
+      "files": []
+    }
+  ]
+}

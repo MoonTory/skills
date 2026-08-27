@@ -1,0 +1,17 @@
+{
+  "skill_name": "plan",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "You are the Planner. Use the supplied exploration to define the smallest plan for a new plugin lifecycle hook. Do not implement it.",
+      "expected_output": "Produces a bounded caller-first contract with scope, seams, acceptance, validation, risks, and open choices while remaining read-only.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "The design has two plausible directions. Open two agents to draft both, pick one, and start coding it.",
+      "expected_output": "Does not spawn agents or implement. It describes the unresolved alternatives and returns the decision or additional research needed to the caller.",
+      "files": []
+    }
+  ]
+}

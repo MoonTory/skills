@@ -1,11 +1,14 @@
 ---
 name: reflect
-description: Review a completed or troubled agent run for durable lessons, then propose concrete skill, check, or tooling changes. Use when the user says reflect, asks what the workflow learned, or wants to improve the next teamlead run. Do not edit shared skills until the user approves the proposed changes.
+description: Coordinate a review of a completed or troubled run for durable workflow lessons. Use in a coordinator profile when the user explicitly asks to reflect or improve the workflow. Never use from a terminal worker role, and do not edit shared skills until the user approves the proposed changes.
 ---
 
 # Reflect
 
 Mine the current conversation for durable learnings, then route them into skill edits.
+
+This is a coordinator utility. Read the installed `orchestrator` skill before launching reviewers. If the current
+task assigns a terminal role, return to the caller instead of starting this workflow.
 
 ## When to invoke
 
@@ -30,11 +33,13 @@ latest messages before accepting a match. If no path resolves, write a tight dig
 Launch three reviewers together when available. They are read-only on files and external systems; the parent applies
 approved edits. Give each the same transcript or digest and one lens.
 
-| Lens | `model` | Prompt template |
+| Lens | Selection | Prompt template |
 |---|---|---|
-| Judgment | Fable or Opus | `references/judgment-reviewer.md` |
-| Tooling | Sol | `references/tooling-reviewer.md` |
-| Divergent | Terra or local Qwen | `references/divergent-reviewer.md` |
+| Judgment | Strong product and engineering judgment | `references/judgment-reviewer.md` |
+| Tooling | Strong technical reasoning | `references/tooling-reviewer.md` |
+| Divergent | Different model family from the first two | `references/divergent-reviewer.md` |
+
+Choose the concrete models through the current repository or user policy and active harness skill.
 
 Pass each template verbatim, substituting the transcript path or digest where marked. Reviewers return findings in the `Task` response body.
 

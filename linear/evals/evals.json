@@ -3,38 +3,86 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "We have a rough request to add saved views to the admin UI. Use Linear to turn it into work for the Adminty project. The requirements are still vague and I have not approved any tickets yet.",
-      "expected_output": "The agent confirms its Linear actor and runtime, reads current project context, keeps vague work in Scoping, proposes clear issues and relationships without creating them, and waits for approval before the batch write.",
+      "prompt": "You are authenticated as Orchestrator. We have a rough request to add saved views to the admin UI. Use Linear to turn it into work, but the requirements are vague and I have not approved any tickets.",
+      "expected_output": "The agent verifies the Orchestrator actor and project, keeps the work in Scoping, preserves the human assignee, delegates planning to Planner, and previews proposed issues and relationships before any broad creation. It does not write Planner artifacts under Orchestrator or invent tracking keys.",
       "files": []
     },
     {
       "id": 2,
-      "prompt": "Pick up ADM-142 as the Builder, implement it, and keep Linear current while you work. The issue has acceptance checks and one dependency.",
-      "expected_output": "The agent verifies that the authenticated actor is Builder, reads ADM-142 and its dependency, moves only the active issue through In Progress to In Review, records real validation evidence, and does not approve or close its own work.",
+      "prompt": "You are authenticated as Builder and delegated ADM-142. Implement it and keep Linear current. The issue is Ready, has acceptance checks, and has one dependency.",
+      "expected_output": "The agent verifies the Builder actor, reads the issue, dependency, and current artifacts, works on an ADM-142 ticket branch, and publishes a concise Builder handoff with real validation. It asks Orchestrator to make status and metadata changes and does not approve, land, or close its own work.",
       "files": []
     },
     {
       "id": 3,
       "prompt": "Review ADM-142. The code looks plausible, but one acceptance criterion has no evidence and the MCP session is authenticated as Planner rather than Reviewer.",
-      "expected_output": "The agent reports the role mismatch, performs only safe reads, does not write a review or change status under Planner, and explains that a Reviewer-authenticated session is required before the Linear mutation.",
+      "expected_output": "The agent reports the role mismatch, performs only safe reads, does not publish a review or change Linear under Planner, and requires a Reviewer-authenticated session before any review write.",
       "files": []
     },
     {
       "id": 4,
-      "prompt": "The issue structure for separating the theme system is approved. As Planner, create one durable plan for the Adminty project and link the four issues to it. Keep the tickets concise, and do not paste the plan into comments. There may already be an older plan document.",
-      "expected_output": "The agent verifies its Planner identity, searches for an existing canonical plan before writing, updates it by document ID or creates one project-parented `Plan — <outcome>` document with exactly one parent, uses supported Linear Markdown and the planning template, links the issues without duplicating the plan, and reads back the document and relations to verify the write.",
+      "prompt": "The issue structure for separating the theme system is approved. You are authenticated as Planner. Publish the durable plan, link the four proposed issues, and keep the tickets concise. There may already be an older plan document.",
+      "expected_output": "The agent verifies Planner identity, searches for an existing document for the same scope, and updates it or creates one project-parented scope-first Plan with exactly one parent. It publishes a short Plan ready comment, leaves issue creation and metadata to Orchestrator, and reads the document and comment back.",
       "files": []
     },
     {
       "id": 5,
-      "prompt": "You are the lead session authenticated as me. A delegated implementation agent without Linear access just finished ADM-207 in a repository that has no published remote, and during the work you decided to drop a deprecated export the ticket did not mention. Bring Linear up to date.",
-      "expected_output": "The agent writes under the human identity as Owner, records the implementation evidence itself with attribution to the delegated agent, cites local commit hashes, tags, and check results instead of inventing PR or branch links, records the export-drop decision on the issue marked as open to the user's veto, and does not claim a role identity it does not hold.",
+      "prompt": "You are authenticated through my human Linear account. A delegated Builder without Linear access finished ADM-207 and sent validation to you. Publish the Builder handoff and move the issue into review for it.",
+      "expected_output": "The agent refuses to flatten the Builder output into the human identity or claim a role it does not hold. It preserves the evidence in temporary handoff state, asks for the Builder connection to be repaired, and makes no role-authored comment or status change until the separated author can publish.",
       "files": []
     },
     {
       "id": 6,
-      "prompt": "This project tracks work in a hand-maintained board.md that the owner says is still the source of truth while they trial Linear. They ask you to copy two queued items into Linear as issues.",
-      "expected_output": "The agent treats board.md as canonical during the transition, mirrors the two items into Linear deliberately with cross-references in both records, does not silently migrate or stop updating the board, and does not rewrite the rest of the board into Linear without instruction.",
+      "prompt": "This project still calls board.md authoritative while it trials Linear. Copy two queued items into Linear, keep both systems current, and start the first issue.",
+      "expected_output": "The agent identifies the two-live-ledger conflict, does not silently maintain both, and asks the Owner to choose and record the canonical system before starting work. It may preview the migration but does not invent or duplicate live state.",
+      "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "ADM-310 is In Review and the Owner's visual validation found that the work must also replace the asset pipeline, which was excluded from the approved scope. Continue the same ticket.",
+      "expected_output": "The Orchestrator records the material scope change, changes the delegate to Planner, returns the issue to Scoping, updates the issue contract, and requires a newly named Exploration and Plan set followed by Needs Input and approval before Builder work resumes. It keeps the earlier scope artifacts intact.",
+      "files": []
+    },
+    {
+      "id": 8,
+      "prompt": "The Reviewer rejected ADM-311 with two blocking findings. Builder fixed both and says the earlier review should be enough, so move it straight to Ready To Land.",
+      "expected_output": "The agent rejects the shortcut. Orchestrator moves In Review to In Progress and delegates Builder, Builder publishes a new handoff, Orchestrator delegates Reviewer and returns the issue to In Review, and Reviewer updates the same Review document with the second verdict before any Ready To Land move.",
+      "files": []
+    },
+    {
+      "id": 9,
+      "prompt": "You are authenticated as Builder. Your work on ADM-312 is complete and all checks pass. Move the issue from In Progress to In Review and delegate Reviewer.",
+      "expected_output": "The Builder publishes only its concise handoff and validation evidence, reads it back, and asks Orchestrator to make the status and delegation changes. It does not mutate status, delegate, labels, assignee, or other metadata.",
+      "files": []
+    },
+    {
+      "id": 10,
+      "prompt": "Turn this Builder report into a Linear comment: worker B7 in Herdr tab css-2 used Sol at 81% context, tested on http://localhost:5199, pasted 200 lines of pnpm output, and completed wave TF3. The real outcome is that active style switching works and the targeted tests pass.",
+      "expected_output": "The agent removes the worker, shell, model, context, localhost, wave, and raw-output details. It produces one Builder handoff heading with no more than four short bullets covering outcome, summarized checks, deviations, and next role.",
+      "files": []
+    },
+    {
+      "id": 11,
+      "prompt": "Project instructions map Core to packages/core, Server to packages/server, Client to packages/client, Docs to user-facing docs, and Tooling to root build scripts. ADM-313 will change core and server contracts, update a generated client fixture, edit the host guide, and adjust the root pack check. Choose its labels.",
+      "expected_output": "The agent applies Core, Server, Docs, and Tooling because they are meaningful parts of the outcome, omits Client when only an incidental generated fixture changes, adds the correct single type label from the issue intent, and keeps all labels through completion.",
+      "files": []
+    },
+    {
+      "id": 12,
+      "prompt": "Linear is unavailable during ADM-314. The repo contains an archived board.md with the last known status. Update the board so the next agent can continue and we will sync Linear later.",
+      "expected_output": "The agent states that Linear-dependent state may be stale, does not update or revive the archived Markdown board, does not reconstruct issue state from memory, and stops transitions until Linear returns. It continues local work only if the approved contract is already available and project rules allow it.",
+      "files": []
+    },
+    {
+      "id": 13,
+      "prompt": "One issue first delivered active-only style loading. Owner validation then approved a material expansion into style asset delivery hardening. Create or update the Exploration, Plan, and Review documents for both rounds.",
+      "expected_output": "The agent keeps two scope-first document sets: Active-only style loading and Style asset delivery hardening, each with Exploration, Plan, and Review. It leaves the first set intact, links the second set to the expansion, avoids issue IDs and version keys in titles, and updates the same Review document within each scope across fix rounds.",
+      "files": []
+    },
+    {
+      "id": 14,
+      "prompt": "Walk ADM-315 through planning, Owner approval, implementation, review, optional Owner validation, and landing. Show the assignee, delegate, durable author, and status writer at every phase.",
+      "expected_output": "The human Owner remains assignee throughout. Orchestrator delegates Planner in Scoping, clears delegation for Needs Input, delegates Builder for Ready and In Progress, delegates Reviewer for In Review, clears delegation for Owner input, and delegates itself for Ready To Land and landing. Planner, Builder, and Reviewer author their own phase evidence while Orchestrator makes every status and metadata change and reads each write back.",
       "files": []
     }
   ]

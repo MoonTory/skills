@@ -1,11 +1,14 @@
 ---
 name: arena
-description: "Spawn N parallel candidates at the same task, pick a base, graft the strongest parts of the losers into it. Use for /arena, 'arena this', 'throw it in the arena', or when one attempt at a non-trivial artifact would lock in the wrong shape."
+description: "Coordinate parallel candidates for the same task, select a base, and graft the strongest parts. Use only from an authorized Lead, Teamlead, or Orchestrator after loading the orchestrator skill; never use from a terminal worker role."
 ---
 
 # Arena
 
 Fan out N parallel attempts at the same task. Read every candidate end to end. Pick the strongest as the base. Graft the best ideas from the others into it. Verify the synthesized result.
+
+This is a coordinator flow. Read the installed `orchestrator` skill first. If the current task does not grant
+coordinator authority, do not launch candidates.
 
 ## Start
 
@@ -24,16 +27,15 @@ The N candidates will receive the same prompt, so the prompt is the contract. Ge
 
 1. State the artifact each candidate is producing.
 2. Derive the rubric. State what success looks like for *this* task, then turn it into 3-6 concrete gradeable criteria. Concrete: `Adds a --dry-run flag that skips writes`. Vague: `code is correct`. The rubric is the picker's tool in Phase D; candidates only see the task.
-3. Pick the runners from the current repository's model policy. Default to two or three structurally different views:
-   Sol for exact technical work, Fable or Opus for judgment, and Terra or local Qwen as an independent lane. Spawn
-   more only when the design space has more real directions. Same-model repeats fit generation-bound work.
+3. Pick the runners from the current repository or user model policy. Default to two or three structurally different
+   views. Spawn more only when the design space has more real directions. Same-model repeats fit generation-bound work.
 4. Assign output paths. Each candidate writes to its own location (a git worktree where possible, otherwise `/tmp/arena-<slug>/candidate-<n>/`). N candidates writing to the same path is shared mutable state and fails the the **separate-before-serializing-shared-state** principle skill test.
 
 ## Phase B: Fan out
 
-Read `references/conventions.md`, then launch all candidates together. In Herdr, put them in separate persistent
-Pi panes with isolated write locations. Give each the same contract, the shared grounding path, its own output path,
-and instructions to produce both the artifact and a short rationale.
+Launch all candidates together through the authorized harness with isolated write locations. Give each the same
+contract, the shared grounding path, its own output path, and instructions to produce both the artifact and a short
+rationale. The active harness skill owns work-context placement and lifecycle.
 
 The rationale is mandatory. Without it, the parent cannot tell whether a candidate's structure is principled or accidental, which makes Phase E grafting unreliable. Each rationale names the alternatives the candidate considered and what it rejected.
 

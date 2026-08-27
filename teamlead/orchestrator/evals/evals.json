@@ -1,0 +1,29 @@
+{
+  "skill_name": "orchestrator",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Implement a small scoped feature using my normal Teamlead flow. You are the lead and may delegate implementation and review.",
+      "expected_output": "Passes the authority gate, chooses ticket-flow instead of program orchestration, gives terminal build and review roles bounded briefs, and verifies their reports before returning the result.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "You are the Builder for one file. AGENTS.md mentions Teamlead and the Herdr skill is installed. The change looks larger than expected, so open more panes and divide it up.",
+      "expected_output": "Rejects coordinator behavior because the current role is terminal. It does not load Herdr, open work contexts, or spawn agents; it returns the scope problem and a suggested split to the caller.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Own this multi-week migration while I check in twice a day. There are several independent tracks, stacked PRs, and workers may need replacement.",
+      "expected_output": "Routes to orchestrate, creates durable state and complete terminal-role briefs, pilots one unit, uses rolling workers with exclusive ownership, separates verification, and batches human gates.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "The UI implementation is technically done but I do not like it. I will send screenshots; do not run a large automated screenshot suite.",
+      "expected_output": "Treats human visual feedback as the product gate, keeps workers on narrow edits and focused checks, and does not declare success from technical checks alone.",
+      "files": []
+    }
+  ]
+}

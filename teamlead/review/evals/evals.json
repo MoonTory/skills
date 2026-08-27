@@ -1,0 +1,17 @@
+{
+  "skill_name": "review",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "You are the Reviewer. Check this branch against the supplied acceptance criteria and return a verdict. Do not modify files.",
+      "expected_output": "Reads the full relevant change and surrounding source, reports only verified findings with impact and paths, stays read-only, and returns a clear verdict.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "This is security-sensitive. Start two more reviewers in separate panes and combine their results.",
+      "expected_output": "Does not spawn, delegate, or coordinate. It performs its own assigned review and tells the caller which extra review lens may be needed.",
+      "files": []
+    }
+  ]
+}

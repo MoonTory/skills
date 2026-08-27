@@ -1,12 +1,13 @@
 ---
 name: ticket-flow
-description: Run a bounded bug fix, feature, refactor, or UI change through explore, lead plan, one-writer implementation, verification, and fresh adversarial review. Use for ticket work in Herdr or any repo task where delegation can improve confidence without requiring a long-running program.
+description: Run a bounded bug fix, feature, refactor, or UI change through terminal explore, plan, build, and review roles. Use only from an authorized Lead, Teamlead, or Orchestrator after loading the orchestrator skill; never use from a terminal worker role.
 ---
 
 # Ticket flow
 
 The lead plans, decides, verifies, and reports. Workers gather facts, implement the decided change, and review it.
-Read `references/conventions.md` and `references/brief-template.md` first.
+Read the installed `orchestrator` skill and its shared conventions and brief template first. If the current task does
+not grant coordinator authority, stop and use the assigned terminal role skill.
 
 ## 1. Frame
 
@@ -14,15 +15,13 @@ Confirm the requested outcome, non-goals, acceptance checks, and whether the use
 change. Inspect repository instructions and dirty state. Extract a ticket ID from the branch only when the project
 uses one; never invent it.
 
-If the flow will delegate inside Herdr, create one short task-named tab now. Start the first worker in its root pane
-and keep every later explorer, implementer, reviewer, fix, and re-review in that tab. Do not create the tab when the
-lead will do the whole task directly.
+Before the first delegation, let the authorized harness allocate one task context. Keep exploration, planning,
+implementation, review, fixes, and re-review in that context. The active harness skill owns the mechanics.
 
 ## 2. Explore
 
-Start one or two read-only explorers when the code path or cause is not already known. Ask for paths and lines, the
-runtime mechanism, competing explanations, a minimal fix, and risks. A local Qwen lane runs alongside every explore and
-review fan-out (read-only, hyper-specific brief). Say `do not implement`.
+Start one or two terminal `explore` workers when the code path or cause is not already known. Ask for paths and lines,
+the runtime mechanism, competing explanations, a minimal fix, and risks. Keep each brief read-only and bounded.
 
 The lead checks the key files and traces the failing path. Explorer agreement is evidence, not proof.
 
@@ -30,13 +29,14 @@ The lead checks the key files and traces the failing path. Explorer agreement is
 
 Name the root cause or feature shape, the exact change, what stays untouched, and how success will be checked. Point
 the implementer at an existing file to mirror when possible. For ambiguous work, settle the contract with the user
-before implementation. Use `architect` when the change crosses an important boundary.
+before implementation. Delegate a terminal `plan` role for a non-trivial contract. Use `architect` when the change
+needs competing designs.
 
 ## 4. Implement
 
-Give one write-capable implementer exclusive scope. Prefer Sol for complex work. The brief contains the decided
-approach; the implementer does not restart discovery unless the source contradicts the plan. Require a diff summary,
-focused check results, deviations, and open issues. The implementer does not commit unless the brief says so.
+Give one terminal `build` worker exclusive write scope. The brief contains the decided approach; the Builder does not
+restart discovery unless the source contradicts the plan. Require a diff summary, focused check results, deviations,
+and open issues. The Builder does not commit unless the brief says so.
 
 ## 5. Verify
 
@@ -49,12 +49,12 @@ driven screenshot loop.
 
 ## 6. Review
 
-Use a fresh read-only reviewer with no stake in the implementation. Give it the contract, cause, diff, and known
-risks. Ask for `APPROVE` or `REQUEST CHANGES` with evidence. Use two reviewers when the risk justifies it: one for
-technical correctness and one for product or API taste.
+Use a fresh terminal `review` worker with no stake in the implementation. Give it the contract, cause, diff, and
+known risks. Ask for `APPROVE` or `REQUEST CHANGES` with evidence. Use `adversarial-review` when the risk justifies
+several independent reviewers.
 
-Judge every finding yourself. Send accepted fixes to the same implementer pane, then return to the same reviewer for
-a new verdict. Do not apply reviewer suggestions just because they exist.
+Judge every finding yourself. Send accepted fixes to the same Builder work context, then return to the same Reviewer
+for a new verdict. Do not apply reviewer suggestions just because they exist.
 
 ## 7. Ship or hand back
 

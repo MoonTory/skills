@@ -1,11 +1,14 @@
 ---
 name: architect
-description: "Sketch types, signatures, and module structure before code, then stay in the loop while implementation fills in. Use for /architect, 'architect this', 'design this', or non-trivial work where jumping to code would lock in the wrong shape."
+description: "Coordinate competing design sketches before implementation. Use only from an authorized Lead, Teamlead, or Orchestrator after loading the orchestrator skill; never use from a terminal Planner or other worker role."
 ---
 
 # Architect
 
 Design before implementing. Sketch types, function signatures, class shapes, and module boundaries with `not implemented` bodies and pseudocode. Synthesize across multiple model perspectives, then fill in code against the chosen sketch. If implementation proves the sketch wrong, throw it out and redesign.
+
+This is a coordinator flow. Read the installed `orchestrator` skill first. If the current task does not grant
+coordinator authority, stop and use the terminal `plan` skill.
 
 ## Start
 
@@ -19,8 +22,8 @@ Open a todolist with one entry per phase before starting. Autonomous mode withou
 
 ## Phase A: Ground the problem
 
-Build a real mental model of every system the new code touches. Run the **explore** skill over the relevant
-subsystems. Use critique mode when existing structure is the constraint or the design must push back on it.
+Build a real mental model of every system the new code touches. Delegate bounded terminal `explore` roles over the
+relevant subsystems. Use `adversarial-review` when existing structure must be challenged.
 
 Naming a file is not grounding. Produce the traced model `explore` prescribes. When the design changes ownership or
 layering, inspect commit, PR, issue, and project-memory history so known reasons become constraints rather than guesses.
@@ -31,8 +34,7 @@ Skip Phase A only when the work is genuinely greenfield with no surrounding syst
 
 Run the **arena** skill with the design-sketch task and the Phase A grounding artifacts. Pass `references/runner-prompt.md` as each runner's prompt. Each candidate produces a design package shaped per `references/rationale-template.md`: the caller's usage written first, then the type sketch, function signatures, module map, and prose rationale derived from it.
 
-Read `references/conventions.md`. Use at least two different design views. Prefer Sol for exact technical
-constraints, Fable or Opus for judgment, and Terra or local Qwen for an independent lane when available.
+Use at least two structurally different design views chosen through the current model policy.
 
 Design it twice. Require at least two structurally distinct candidates before synthesis, even when the first looks
 sufficient. Compare whole shapes, not small changes inside one shape.
@@ -58,7 +60,8 @@ If the human pushes back on the shape (in a checkpoint or after the fact), treat
 
 ## Phase D: Implement against the sketch
 
-Replace `not implemented` bodies with code, pseudocode with logic. The synthesized sketch is the contract.
+Delegate a terminal `build` role to replace `not implemented` bodies with code and pseudocode with logic. The
+synthesized sketch is the contract.
 
 Deviations from the sketch are signal worth surfacing, not friction to absorb silently. If a function needs a parameter the sketch didn't anticipate, ask whether the sketch was wrong, the requirement was missed, or the implementation is overreaching. Surface it; don't bolt it on.
 
@@ -80,7 +83,7 @@ Use judgment. A few edge cases don't condemn an architecture. Some problems are 
 
 When you scrap:
 
-1. Re-run **explore** over what was built. Implementation lessons become inputs to the next design.
+1. Delegate a fresh terminal `explore` role over what was built. Implementation lessons become inputs to the next design.
 2. Redesign as if the new constraints had existed from day one.
 3. Remove failed structure before adding more. The new sketch should start smaller than the old one.
 4. Return to Phase B and re-run arena.

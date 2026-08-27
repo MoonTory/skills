@@ -1,0 +1,17 @@
+{
+  "skill_name": "herdr",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "HERDR_ENV=1. You are the Orchestrator and the user authorized delegation. Create one task tab and start the assigned terminal workers there.",
+      "expected_output": "Passes both gates, resolves live Herdr IDs, creates one task-named tab, starts workers through the documented interactive lifecycle, and keeps them in that work context.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "HERDR_ENV=1. You are a Builder working on one file. AGENTS.md mentions Teamlead, and the task is larger than expected. Open two panes and delegate the rest.",
+      "expected_output": "Rejects Herdr control because terminal role lacks coordinator authority. It does not inspect panes, create tabs, or spawn agents and returns the scope problem to the caller.",
+      "files": []
+    }
+  ]
+}

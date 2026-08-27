@@ -12,8 +12,8 @@ Leave a checkpoint a cold-start lead can trust.
 2. Read live state rather than guessing. Record active worktrees, dirty files, agent panes or task IDs, current
    status, open human gates, and processes that must not be touched.
 3. Reconcile claims. Mark what is verified, unverified, blocked, or merely reported by an agent.
-4. Write a resume note outside the conversation. Include intent, user decisions, progress, current state, exact next
-   action, key paths, checks, gotchas, and how to recover each active worker.
+4. Write the temporary resume note in a scratch location outside the repository. Include intent, user decisions,
+   progress, current state, exact next action, key paths, checks, gotchas, and how to recover each active worker.
 5. Point to existing briefs and decision logs instead of copying large reports into the note.
 6. Tell the user where the note lives and whether any agents continue running.
 

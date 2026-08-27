@@ -1,28 +1,31 @@
 ---
 name: linear
-description: "Use Linear as the source of truth for engineering work in projects that explicitly expose a `linear` MCP server. Use whenever a task names a Linear issue, asks to plan or track work in Linear, needs to create or update a durable planning artifact, or needs to create, claim, update, review, or close tracked work. Confirm the authenticated role before writes, keep issue state and evidence current, and never introduce Linear into a project that has not opted in."
-compatibility: "Requires a configured Linear MCP server named `linear`."
+description: "Use Linear as the source of truth for engineering work in projects that explicitly expose a `linear` MCP server. Use whenever a task names a Linear issue, asks to plan or track work in Linear, needs a durable planning or review artifact, or needs to create, claim, update, review, or close tracked work. Confirm the authenticated actor before writes, preserve the separation between Orchestrator, Planner, Builder, Reviewer, and Owner, and never introduce Linear into a project that has not opted in."
 ---
 
 # Linear workflow
 
-Use Linear for durable scope, ownership, dependencies, and status. Use the current coding workflow for exploration, implementation, delegation, and review. Do not duplicate Linear's job in a hand-maintained Markdown task ledger.
+Use Linear for durable scope, ownership, dependencies, decisions, evidence, and status. Use the current coding workflow for exploration, implementation, delegation, and review. Do not duplicate Linear's job in a live Markdown task ledger.
 
-If the user asks about setup, authentication, role profiles, or connection errors, read `references/setup.md`. When creating or updating a plan, design, investigation, or review document, read `references/artifacts.md`.
+Read the focused reference when the task needs it:
+
+- Setup, authentication, tokens, delegation, role profiles, or connection errors: `references/setup.md`.
+- Exploration, Plan, or Review documents: `references/artifacts.md`.
+- Any issue comment: `references/comments.md`.
 
 ## Start with the real context
 
 1. Read the repository instructions and the active issue before planning or changing work.
 2. Confirm that a configured `linear` MCP server exists. A globally installed skill is not permission to add Linear to an unrelated project.
-3. Before the first write in a session, use a read call to identify the authenticated Linear actor, workspace, team, and active issue. Recheck after a handoff or profile change.
+3. Before the first write in a session, use read calls to identify the authenticated Linear actor, workspace, team, project, and active issue. Recheck after a handoff, reconnect, or profile change.
 4. Match the assigned workflow role to the authenticated actor. Reads are safe when they do not match; writes are not. Stop and report the mismatch instead of writing under the wrong name.
-5. Resolve issues through Linear search or returned IDs. Never invent an issue ID, batch code, project, milestone, or dependency.
+5. Resolve issues through Linear search or returned IDs. Never invent an issue ID, project, milestone, relation, status, label, or delegate.
 
 At the first meaningful update, report the execution context in this compact form:
 
 ```text
-Role: <Planner | Builder | Reviewer | Owner | Unknown>
-Harness: <Pi | Codex | Zed | other actual client | Unknown>
+Role: <Orchestrator | Planner | Builder | Reviewer | Owner | Unknown>
+Harness: <Pi | Codex | Claude | Zed | other actual client | Unknown>
 Shell: <Herdr | Direct | Unknown>
 Linear: <authenticated actor name>
 Issue: <ID — title | None>
@@ -30,123 +33,185 @@ Issue: <ID — title | None>
 
 The harness is the AI client that runs the agent. Herdr is only a shell and session manager; it is never the harness, role, or Linear identity. Report only what the runtime proves. Use `Unknown` rather than guessing.
 
-## Role boundaries
+## Writer and delegation contract
 
-The authenticated app normally determines the role. A workflow assignment may narrow that role but must not silently widen it. A directly authenticated human may act as Owner when the user asks, but should not claim to be an app role.
+Use separated authorship. The actor visible in Linear should show which role produced each durable fact.
 
-Not every agent in a workflow has a Linear identity, and that is normal. A lead session that orchestrates delegated agents usually holds the human's own authentication and acts as Owner on their behalf; exploration or implementation agents launched without a role token cannot and should not write to Linear. Those agents report durable facts to the lead, and the lead records them under its own identity, attributing the source in the comment or evidence ("builder run reported…"). Give an agent a role token only when it should speak in Linear as that role.
+| Phase | Delegate | Durable author | Metadata and status writer |
+| --- | --- | --- | --- |
+| Scoping | Planner | Planner | Orchestrator |
+| Implementation | Builder | Builder | Orchestrator |
+| Review | Reviewer | Reviewer | Orchestrator |
+| Owner input | None | Owner, or Orchestrator with clear Owner attribution | Orchestrator |
+| Landing | Orchestrator | Orchestrator | Orchestrator |
 
-When the lead takes a decision on the user's behalf — a scope call, an API shape, a terminal transition the user has not seen — record it where the affected work lives (the issue's Decisions or a comment) and mark it as open to veto until the user confirms. A vetoable decision is a durable fact like any other; a decision that only exists in a chat transcript is not recorded.
+The human owner remains the assignee. The Orchestrator changes the app delegate at phase boundaries. Planner, Builder, and Reviewer publish through their matching app identities, but they never change status, labels, assignee, delegate, project, priority, milestone, or relations.
 
-## Waiting on the owner
+The Orchestrator is the sole metadata and status writer. It reads the role's published evidence before changing the issue. It does not normally publish a Planner, Builder, or Reviewer artifact on that role's behalf. If the correct role cannot publish, stop the phase and repair the role connection instead of flattening authorship.
 
-Two situations need the owner's attention, and they are not the same. Statuses stay untouched in both — a status describes the work, an issue label describes what is needed from the owner, and clearing the label resumes the work exactly where it stood.
-
-- `Awaiting Ruling` — a decision was taken on the owner's behalf and work continued. The issue's Decisions entry or a comment names the decision "(open to veto)". The owner clears the label by confirming or vetoing; a veto becomes a follow-up, not a rewrite of history.
-- `Needs Input` — work is paused on something only the owner can supply (a signed API shape, a product choice, missing information). Add the label, write one comment stating the exact question and what unblocks, assign the issue to the owner, and move to other work instead of guessing. The status keeps telling the truth: `Scoping` if execution never started, unchanged if the block struck mid-flight.
-
-These are issue labels, not project labels; match the team's existing label naming (Linear's defaults are Title Case). A saved view per label gives the owner a standing inbox: what they owe a ruling on, and what is stuck on them. Do not fold either situation into a status — that would overwrite the issue's real position in the pipeline and punch holes in the role transitions above.
-
-### Planner
-
-- Own architecture, scoping, issue breakdown, dependencies, acceptance criteria, and ordering.
-- Own the canonical planning document when work needs one. Keep its work breakdown aligned with the issues that were approved and created.
-- Turn unclear work into `Scoping`, and move it to `Ready` only when a builder can execute it without filling in a product or architecture decision.
-- Preview a new issue set, bulk rewrite, milestone structure, or dependency graph before creating it. After approval, apply that exact batch and report the resulting Linear IDs.
-- Do not claim that implementation or review passed. Move `Ready To Land` to `Done` only after landing and validation evidence exists.
-
-### Builder
-
-- Read the whole issue, its dependencies, and repository instructions before changing code.
-- Move `Ready` to `In Progress` when work actually starts. Do not claim several issues at once without a reason.
-- Stay within the agreed scope. When the ticket is missing a decision or reveals separate work, record the blocker or propose a follow-up instead of quietly expanding the ticket.
-- Move to `In Review` only after checking every acceptance criterion and recording the validation that actually ran.
-- Do not approve the implementation or mark it `Ready To Land` or `Done`.
-
-### Reviewer
-
-- Review the issue contract, implementation evidence, and current code without inheriting the builder's assumptions.
-- Record actionable findings with evidence. Move the issue back to `In Progress` when changes are required.
-- Move `In Review` to `Ready To Land` only when the acceptance criteria and proportional checks pass.
-- Do not implement fixes while acting as Reviewer. A deliberate role change requires the matching Linear identity.
+A directly authenticated human acts as Owner. Do not call the human session Orchestrator, Planner, Builder, or Reviewer. A role assignment may narrow an actor's authority but cannot widen it.
 
 ## Status contract
 
-Use the smallest transition that tells the truth about the work.
+Only the Orchestrator changes status.
 
-| Status | Meaning | Normal owner |
-| --- | --- | --- |
-| `Backlog` | Known work that is not being scoped or queued yet | Planner or Owner |
-| `Scoping` | The outcome or execution contract still needs decisions | Planner |
-| `Ready` | Scoped, unblocked, and executable | Planner |
-| `In Progress` | A builder is actively working on it | Builder |
-| `In Review` | Implementation is ready for an independent verdict | Builder hands to Reviewer |
-| `Ready To Land` | Review passed; merge or release remains | Reviewer hands to Planner or Owner |
-| `Done` | Landed and validated | Planner or Owner |
-| `Canceled` | Intentionally stopped and not expected to resume | Planner or Owner |
-| `Duplicate` | Replaced by another linked issue | Planner or Owner |
+| Status | Meaning |
+| --- | --- |
+| `Backlog` | Known work that is not being scoped or queued yet |
+| `Scoping` | The outcome or execution contract still needs decisions |
+| `Needs Input` | One clear Owner action is required before the next truthful stage |
+| `Ready` | Scoped, approved, unblocked, and executable |
+| `In Progress` | A Builder is actively working on a ticket branch |
+| `In Review` | The current implementation round is ready for an independent verdict |
+| `Ready To Land` | Review and Owner gates passed; the ticket branch has not entered the main branch |
+| `Done` | The approved work landed in the main branch and passed final verification |
+| `Canceled` | Intentionally stopped and not expected to resume |
+| `Duplicate` | Replaced by another linked issue |
 
-There is no separate `Parked` state. `Backlog` covers work that is worth retaining but not active.
-
-Normal transitions are:
+The normal path is:
 
 ```text
-Backlog -> Scoping -> Ready -> In Progress -> In Review -> Ready To Land -> Done
-                                     ^            |
-                                     +------------+  changes requested
+Backlog
+-> Scoping
+-> Needs Input
+-> Ready
+-> In Progress
+-> In Review
+-> Needs Input
+-> Ready To Land
+-> Done
 ```
 
-Cancellation and duplicate marking are terminal decisions. Require a clear user instruction or an already-approved plan, link the reason or canonical issue, and verify the result after writing.
+Use the second `Needs Input` only when the issue requires Owner validation. If it does not, a passed review can move directly to `Ready To Land`.
+
+The required loops are:
+
+```text
+Review rejects:
+In Review -> In Progress -> In Review
+
+Material scope change:
+Any active status -> Scoping -> Needs Input -> Ready
+
+Owner approves without changing scope:
+Needs Input -> previous honest execution stage
+
+Owner changes the contract:
+Needs Input -> Scoping
+```
+
+A material rescope updates the issue contract and produces newly named planning artifacts before implementation resumes. Every changed implementation returns to `In Review`; never move directly from `In Progress` to `Ready To Land` or `Done`.
+
+`Needs Input` is a status, never a label. Before entering it, write the exact Owner action, its impact, and the stage to resume. Clear the delegate while the issue waits. Do not use `Needs Input` for a question the Planner should resolve during `Scoping`.
+
+Cancellation and duplicate marking are terminal decisions. Require clear authority, record the reason or canonical issue, and verify the result after writing.
+
+## Branch and landing contract
+
+A remote is not required:
+
+1. Work begins on a ticket branch tied to the Linear issue ID.
+2. Builders prepare commits on that branch.
+3. Review and Owner validation use that branch.
+4. `Ready To Land` means no further product or technical work is required before merge.
+5. The Orchestrator delegates the issue to itself and lands the branch into the project's main branch.
+6. Final verification runs against the landed tree.
+7. The Orchestrator records the landing evidence and moves the issue to `Done`.
+
+When a remote exists, the same contract maps to a pull request. Do not treat work already committed to the main branch as `Ready To Land`.
+
+## Role boundaries
+
+### Orchestrator
+
+- Own all issue metadata, status, assignment, delegation, labels, relations, owner decisions, coordination records, and landing evidence.
+- Delegate the active phase to Planner, Builder, Reviewer, or itself, while leaving the human assignee unchanged.
+- Read the active role's published artifact or comment before applying the next transition.
+- Preview broad issue creation, restructuring, or a new dependency graph before writing it.
+- Keep the issue contract and area labels current when scope changes.
+- Move `Ready To Land` to `Done` only after landing and the promised checks pass on the landed tree.
+
+### Planner
+
+- Own exploration, architecture, scoping, issue proposals, dependencies, acceptance criteria, ordering, and validation strategy.
+- Publish one canonical Exploration or Plan document per distinct scope when the work needs a durable artifact.
+- Make issue proposals executable without filling in a product or architecture decision.
+- Publish a concise Plan ready comment, then hand control to the Orchestrator.
+- Do not create or update issue metadata, delegate roles, or change status.
+
+### Builder
+
+- Read the whole issue, its dependencies, linked artifacts, and repository instructions before changing code.
+- Work on the ticket branch and stay within the agreed scope.
+- Report a missing decision, material rescope, or separate follow-up instead of quietly expanding the issue.
+- Publish a concise Builder handoff with the outcome, checks that actually ran, deviations, and next role.
+- Do not change issue metadata or status, approve the implementation, or land the branch.
+
+### Reviewer
+
+- Review the current issue contract, linked artifacts, implementation evidence, and ticket branch without inheriting the Builder's assumptions.
+- Publish actionable findings with evidence and a clear pass or reject verdict.
+- Create one Review document for the scope when the review needs durable structure. Update that same document through rejection, fixes, and final approval.
+- Recheck every changed implementation round before approving it.
+- Do not change issue metadata or status, implement fixes, or land the branch.
 
 ## Issue contract
 
-Use Linear's durable issue ID and a plain, descriptive title. Do not replace them with agent-made wave, batch, letter, or number codes. When older planning notes know the work by such a code, keep the title plain and add one line to the description ("Historical planning notes refer to this work as TF4") so both records stay searchable.
+Use Linear's durable issue ID and a plain, descriptive title. Never put agent-made batch, wave, worker, model, pane, tab, or context identifiers in Linear titles, descriptions, comments, documents, relations, or user-facing reports. Temporary orchestration keys remain inside live scratch state.
 
-When creating or materially rewriting an issue, preserve the project's template and make these facts clear:
+The issue description always contains the current:
 
-- **Goal:** the observable outcome.
+- **Outcome:** what will be true when the issue succeeds.
 - **Context:** why the work exists and the evidence behind it.
-- **Scope:** what is included and what is explicitly excluded.
+- **Scope:** what is included and explicitly excluded.
 - **Acceptance criteria:** checkable results, not implementation activity.
-- **Validation:** the checks or real-product evidence needed before review and completion.
+- **Validation:** checks and real-product evidence required before completion.
 - **Dependencies:** only real ordering or context dependencies.
-- **Open questions:** unresolved choices that keep the issue in `Scoping`.
+- **Open decisions:** unresolved choices that keep the issue in `Scoping` or move it to `Needs Input`.
 
-Do not add a permanent repository-location field merely to say where the project lives. Source links, branches, commits, and pull requests carry code location when they exist. A repository without a published remote still produces citable evidence: local commit hashes, tags, the checks that ran with their results, and archive or report paths. Cite what actually exists rather than leaving validation empty or inventing links that will not resolve. Use milestones only for a real release, phase, or checkpoint that groups several issues; one issue does not need milestone ceremony.
+The Orchestrator updates this contract before implementation resumes after a material rescope. Do not add a permanent repository-location field merely to say where the project lives. Cite source links, commits, pull requests, checks, stable previews, or report paths that actually exist. Never use a local-only URL as durable evidence.
 
-## Durable artifacts
+## Area and type labels
 
-Use a Linear document when a plan, design, investigation, or review is too large for one issue, spans several issues, or needs a durable account of decisions and tradeoffs. Do not create a document for a short issue whose contract is already clear.
+Use the project's defined area labels to show meaningful implementation ownership at a glance:
 
-- Search for an existing canonical document before creating one. Update it by ID rather than creating `v2`, `final`, or duplicate documents; Linear already keeps document history.
-- Create a document with exactly one parent. Use the project as parent for cross-issue work and the issue as parent for material that belongs to one issue.
-- On update, omit the parent unless intentionally moving the document. Passing a parent reparents it.
-- Use the current Linear connection's document-save capability. Creation omits the document ID; updates include it and may replace the full content or apply a narrow patch.
-- Prefer titles such as `Plan — <outcome>`, `Design — <topic>`, `Investigation — <topic>`, and `Review — <topic>`. Do not use agent-made batch or wave codes.
-- Keep issue descriptions self-contained enough to execute, then link the canonical document for wider context. Do not copy the full document into issue descriptions or comments.
-- Use comments only to announce a material decision, handoff, review finding, or artifact update. Link the document instead of pasting it.
-- Re-read the document and its parent after saving. Verify title, content, parent, and returned URL before reporting success.
+- Apply the union of meaningful areas across the whole issue.
+- Set the expected areas during `Scoping`.
+- Add newly affected areas when scope grows.
+- Keep area labels after completion so they remain useful for filtering and analysis.
+- Do not add a label for every incidental fixture, generated file, or formatting-only change.
+- Use flat labels when one issue may touch several areas; do not place mutually compatible areas in a one-choice label group.
+- Apply one durable work-type label, such as `Bug`, `Feature`, or `Improvement`, when the project defines them.
 
-The Planner owns planning artifacts. A Builder reads them but records implementation evidence on the issue. A Reviewer adds concise findings to the issue; use a separate `Review — <topic>` document only when the review itself needs a long-lived, structured report.
+Repository instructions own the exact label-to-path mapping. Do not invent a mapping in the generic skill.
+
+## Durable artifacts and comments
+
+Use a Linear document when an Exploration, Plan, or Review needs more structure than the issue or a short comment can hold. Before creating or changing one, read `references/artifacts.md`.
+
+Use comments only for Plan ready, Builder handoff, Review verdict, Needs Input, Owner decision, and Landed and verified events. Before posting one, read `references/comments.md`.
+
+Do not copy full plans, reviews, raw test output, temporary URLs, or internal execution details into comments. Link the canonical artifact and summarize only the event that changes what happens next.
 
 ## Mutation rules
 
-- Read the current object immediately before changing it. Preserve fields outside the requested scope.
-- Show the exact proposal and wait for approval before bulk issue creation, bulk restructuring, or a new dependency graph. Routine updates to the active issue do not need repeated confirmation when the approved workflow already requires them.
-- Keep comments sparse and useful: decisions, blockers, handoffs, review findings, and validation evidence. Do not post a running transcript or generic progress noise.
-- After each write or coherent batch, read back the affected items and check actor, fields, relations, and status.
+- Read the current object immediately before changing it and preserve fields outside the actor's responsibility.
+- Verify the actor again before the first write after any reconnect, profile change, or long pause.
+- Stop if the authenticated actor does not match the assigned role.
+- Show the exact proposal and wait for approval before broad issue creation, bulk restructuring, or a new dependency graph.
+- After every write, read back the affected object and verify actor, fields, relations, delegate, labels, parent, or status as applicable.
 - Report created or updated issue IDs and any partial failure. Never state that a write succeeded from intent alone.
-- Do not cancel, mark duplicate, delete, or overwrite substantial user-written content without clear authority.
+- Do not cancel, mark duplicate, delete, reparent, or overwrite substantial user-written content without clear authority.
 
 ## Working with other workflows
 
-Linear is canonical for the issue's scope, dependencies, assignment, and delivery status. Other skills may keep local scratch plans or execution state, but those records must not compete with or contradict Linear.
+Linear is canonical for durable issue scope, dependencies, assignment, delegation, decisions, evidence, and delivery status. Other skills may keep temporary execution state, but those records must not compete with Linear or appear in durable comments and artifacts.
 
-A project adopting Linear often has an older ledger — a board file, a plan document, a notes directory. During that transition exactly one record is canonical at a time, and the user decides which. Until they hand authority to Linear, treat the existing ledger as the source of truth and Linear as a deliberate mirror: copy facts in on request, note in each record where the other lives, and never let the two silently diverge. After the handoff, the old ledger stops being updated and says so at the top.
+Do not create or maintain a live Markdown board, local ticket mirror, or durable research ledger as a fallback. If an older ledger exists, follow the project's cutover state: preserve it as history once Linear becomes canonical, but never append new status.
 
 The coding workflow decides how to inspect, delegate, implement, test, and review. This skill decides how those facts enter and move through Linear. The session shell decides where processes run. Keep these concerns separate.
 
-If Linear is unavailable, say which state may now be stale. Do not silently switch to a Markdown ticket system or invent remembered board state. Continue local work only when the user-approved scope remains unambiguous and repository rules permit it.
+If Linear is unavailable, state which durable facts may now be stale and stop Linear-dependent transitions. Do not switch to a Markdown board or reconstruct the issue from memory. Continue local work only when the approved issue contract remains available and repository rules permit it.
 
 ## Handoff and completion
 
@@ -156,10 +221,10 @@ A useful handoff states:
 Issue: <ID — title>
 Status: <current Linear status>
 Actor: <authenticated Linear actor>
-Changed: <durable facts written to Linear>
-Evidence: <checks, links, or review verdict>
-Blocked by: <issue IDs or None>
+Delegate: <current app delegate or None>
+Changed: <durable facts written by this actor>
+Evidence: <checks, branch, artifact, or verdict>
 Next: <one concrete action and expected role>
 ```
 
-Completion means the real artifact and Linear agree. `Done` requires landing plus the validation promised by the issue; an agent finishing its response, a passing type check alone, or a runtime becoming idle is not completion.
+Completion means the landed work and Linear agree. `Done` requires the ticket branch to be in the main branch and the promised validation to pass on that landed tree. A role finishing its response, one passing check, or an idle runtime is not completion.

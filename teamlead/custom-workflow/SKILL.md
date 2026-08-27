@@ -1,11 +1,14 @@
 ---
 name: custom-workflow
-description: Design an auditable, task-specific playbook when ticket-flow and orchestrate do not fit an ambitious migration, unusual prototype, or multi-part change. Use for "figure it out", a risky custom run, or work the user wants to plan jointly before agents start.
+description: Design and coordinate an auditable task-specific playbook when ticket-flow and orchestrate do not fit. Use only from an authorized Lead, Teamlead, or Orchestrator after loading the orchestrator skill; never use from a terminal worker role.
 ---
 
 # Custom workflow
 
 When the task matches no playbook, design one. The deliverable before any code is the workflow itself: a sequence of phases that scales rigor to the task, runs the scientific method, and leaves a decision trail a human can audit after stepping away. Bias toward more rigor. The cost of building the wrong thing dwarfs the cost of being careful.
+
+This is a coordinator flow. Read the installed `orchestrator` skill first. If the current task does not grant
+coordinator authority, do not design or launch a multi-agent workflow.
 
 Do not reinvent a flow that already fits. A focused bug, feature, refactor, or UI change routes to `ticket-flow`. A
 multi-day program with repeated units and tracks routes to `orchestrate`. Use this skill when the work needs its own
@@ -13,7 +16,7 @@ phase shape and the user should review that shape before expensive execution.
 
 ## Start
 
-Read `references/conventions.md`, then add the phases below to the plan.
+Add the phases below to the plan.
 
 ## Phase A: Frame
 

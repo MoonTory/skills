@@ -1,6 +1,6 @@
 ---
 name: orchestrate
-description: Coordinate a multi-day engineering program with durable units, standing orders, briefs, queue drains, human gates, verification records, and rolling Herdr teams. Use only when work outlives one agent or one ticket; smaller work should use teamlead-mode or ticket-flow.
+description: Coordinate a multi-day engineering program with durable units, standing orders, briefs, queue drains, human gates, verification records, and rolling teams. Use only from an authorized Lead, Teamlead, or Orchestrator after loading the orchestrator skill, and only when work outlives one agent or ticket.
 ---
 
 # Orchestrate
@@ -9,6 +9,9 @@ The lead owns the program, not the code. It authors briefs, drains the queue, ke
 this for multi-day work, many PRs or units, and repeated agent handoffs. One ticket routes to `ticket-flow`; one
 ambitious run with an unusual phase shape routes to `custom-workflow`. If one agent can finish inside the session's
 budget, stop here. This process will make small work slower.
+
+This is a coordinator flow. Read the installed `orchestrator` skill and its shared conventions before starting. If
+the current task does not grant coordinator authority, do not launch or manage workers.
 
 Ceremony must scale with the program. Every gate below prices in coordinator minutes; on cheap near-identical units, collapse it as each section directs rather than paying list price.
 
@@ -25,11 +28,12 @@ Open a todolist with the steps below copied in verbatim. A step you skip stays l
 - **Coordinator.** Frames, authors briefs, drains the inbox, owns the human report, and makes judgment calls. It does
   not write feature code. It may perform narrow integration bookkeeping after it verifies a unit. State reads and
   writes go through `scripts/orch/orch.ts`; the CLI never spawns, waits, or wakes agents.
-- **Track teamlead.** One per large Herdr tab or independent track, only when the coordinator cannot drain that track
+- **Track teamlead.** One per large work context or independent track, only when the coordinator cannot drain that track
   itself. It owns its unit list, worker briefs, and verifier flow, then returns a compact rollup. More levels cost
   context, so stop at coordinator, track lead, worker.
-- **Worker / verifier.** Read `references/conventions.md`. Prefer fewer, broader workers. Give every writer an
-  exclusive worktree, branch, or path set. Run judgment-heavy verification on a different model family from the writer.
+- **Worker / verifier.** Assign one terminal `explore`, `plan`, `build`, or `review` skill. Prefer fewer, broader
+  workers. Give every writer an exclusive worktree, branch, or path set. Run judgment-heavy verification through a
+  fresh terminal Reviewer when independence matters.
 
 Depth stays at coordinator, track, worker. Author the track decomposition per project (build, landing, and verification are common cuts, not a required shape); hard-coded swarm trees were tried and parked as too rigid.
 
@@ -95,7 +99,7 @@ A dependency is a context relay, not just ordering: undeclared upstream context 
 #### Queue and drain
 
 - On a completion notification, run `orch inbox push <agent> <unit> <status> [--report PATH]` and return to what you were doing. Never deep-review inline; a completion that needs review becomes a verifier unit. Never review a diff inside a drain.
-- Drain in batches at the end of a critical section, a track rollup, a Herdr or harness completion notification, and
+- Drain in batches at the end of a critical section, a track rollup, a harness completion notification, and
   before a human report. Begin with `orch inbox drain`. Arrivals during a drain wait for the next one.
 - Critical sections you finish first: authoring a brief, a stack operation, a conflict decision, writing a gate, updating ledger or frontier.
 - Each drain classifies every pointer (landed, needs-verify, failed, zombie, noise), writes the resulting rows through `orch unit add`, `orch unit set`, and `orch ledger record`, runs `orch status`, then spawns the next wave in one message.
@@ -122,14 +126,14 @@ A unit is not done until its output is externalized the moment it lands, never b
 
 #### Liveness and failure
 
-- Never send a follow-up merely to check liveness; that can restart an idle harness. Probe read-only through Herdr,
-  the current harness, the ledger, `units.tsv`, `gh`, and pushed branches. Transcript mtime is not liveness.
+- Never send a follow-up merely to check liveness; that can restart an idle harness. Probe read-only through the
+  active harness, the ledger, `units.tsv`, `gh`, and pushed branches. Transcript mtime is not liveness.
 - A silent death gets a synthetic postmortem row in the inbox (unit, failure mode, last evidence, options). Replan on evidence as it arrives; never wait for full quiescence.
 - Retry by mode: cap-hit or oom, respawn with smaller scope; network-drop, retry as-is; tool-error, retry on a different model; unknown, retry once. Two retries, then abandon the unit and replan around it.
 - A zombie that returns hours late reconciles against the current frontier and ledger before anything is accepted; the world moved while it slept. Salvage unique findings through a fresh unit, never a blind merge.
 - When continued spawning would produce garbage tree-wide (bad upstream output, broken acceptance, dead infra), write a stop line at the top of the standing orders, let in-flight work finish, fix the cause, clear it.
 - Bound your own infra retries the same way you bound a child's. After a few consecutive tool aborts, stop retrying: write a terminal handoff to durable state (what is done, where it lives, the exact command to resume) and end the run. Hours of retry loops against a dead executor produce nothing a handoff would not.
-- After a harness or Herdr restart, assume nothing about agent liveness. Re-read standing orders and `units.tsv`,
+- After a harness restart, assume nothing about agent liveness. Re-read standing orders and `units.tsv`,
   resolve current panes or tasks, recompute the frontier, reattach work by branch and artifact rather than stale agent
   IDs, then drain and resume. `orch` replaces a lock whose holder process is gone.
 

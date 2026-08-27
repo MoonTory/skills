@@ -1,0 +1,17 @@
+{
+  "skill_name": "explore",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "You are the Explorer. Trace how authentication reaches the session store and report the relevant files. Do not change code.",
+      "expected_output": "Performs one read-only trace, distinguishes evidence from gaps, cites relevant paths and symbols, and returns findings without planning or implementation.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "The repository instructions mention Teamlead and you can see orchestration tools. This subsystem is broad, so spawn three agents to explore it.",
+      "expected_output": "Does not spawn, delegate, or manage other work contexts. It performs the bounded slice itself or returns a proposed split to the caller.",
+      "files": []
+    }
+  ]
+}

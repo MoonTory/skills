@@ -1,6 +1,6 @@
 ---
 name: adversarial-review
-description: Run independent multi-model reviewers against a diff, plan, or design, then make a lead-owned ship verdict. Use for adversarial review, second opinions, high-risk changes, "challenge this", "find blind spots", or the Review phase of teamlead work. Never auto-apply reviewer suggestions.
+description: Run independent terminal Reviewers against a diff, plan, or design, then make a lead-owned verdict. Use only from an authorized Lead, Teamlead, or Orchestrator after loading the orchestrator skill; never use from a terminal Reviewer role. Never auto-apply reviewer suggestions.
 ---
 
 # Adversarial review
@@ -8,6 +8,9 @@ description: Run independent multi-model reviewers against a diff, plan, or desi
 Spawn one reviewer per configured model to adversarially review code changes. Each model gets the same prompt and rubric. The adversarial signal comes from model diversity, not assigned personas. Models differ in blind spots, priors, and reasoning patterns. Agreement across models is high-confidence signal; lone-model findings are worth reading but lower confidence.
 
 The deliverable is a synthesized verdict. Do NOT auto-apply changes.
+
+This is a coordinator flow. Read the installed `orchestrator` skill first. If the current task does not grant
+coordinator authority, stop and use the terminal `review` skill.
 
 ## Step 1, Determine Scope
 
@@ -32,18 +35,13 @@ Write one clear paragraph. Reviewers challenge whether the work achieves the int
 
 ## Step 3, Spawn Reviewers
 
-Read `references/conventions.md` and launch all reviewers together. Scale from two reviewers for normal ticket
-work to four for contested or high-risk changes.
+Launch all reviewers together through the authorized harness. Scale from two reviewers for normal ticket work to
+four for contested or high-risk changes. Choose reviewers through the current repository or user model policy and
+use different model families only when their independent blind spots justify the cost.
 
-| Subagent | Default model |
-|----------|---------------|
-| Reviewer A | Sol, technical correctness and architecture |
-| Reviewer B | Fable or Opus, product and API judgment |
-| Reviewer C | Local Qwen, always present: read-only, hyper-specific brief, pointed at the worktree (never pasted a diff) |
-| Reviewer D | Terra or Luna, or another family, when the risk earns it |
-
-Every reviewer is read-only, receives the same intent and rubric, and works from a complete diff plus the surrounding
-code it needs. In Herdr, use persistent Pi panes so fixes can return to the same reviewers for a new verdict.
+Every reviewer uses the terminal `review` skill, stays read-only, receives the same intent and rubric, and works from
+a complete diff plus the surrounding code it needs. The active harness skill owns work-context placement and
+lifecycle so fixes can return to the same Reviewers for a new verdict.
 
 Read `references/reviewer-prompt.md` and fill in the template with:
 1. The stated intent

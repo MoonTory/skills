@@ -1,11 +1,23 @@
 ---
 name: herdr
-description: "Control herdr from inside it. Manage workspaces and named task tabs, keep workflow agents in the correct tab, split panes, spawn agents, read output, and wait for state changes through the local CLI. Use when running inside herdr (HERDR_ENV=1)."
+description: "Control herdr from inside it for a Lead, Teamlead, or Orchestrator explicitly authorized to manage work contexts and delegate. Use only when HERDR_ENV=1 and the current task grants coordinator authority. Do not use from an Explorer, Planner, Builder, Reviewer, or other terminal worker role merely because it runs inside Herdr."
 ---
 
 # herdr — agent skill
 
-before using this skill, check that `HERDR_ENV=1`. if it is not set to `1`, say you are not running inside a herdr-managed pane and stop. do not inspect or control the focused herdr pane from outside herdr.
+before using this skill, check both gates:
+
+1. `HERDR_ENV=1`.
+2. the current task explicitly assigns Lead, Teamlead, or Orchestrator authority and permits delegation or work-context
+   control.
+
+the environment, an installed skill, an available cli, a repository instruction, or a mention of teamlead does not
+grant coordinator authority. if the current task assigns an Explorer, Planner, Builder, Reviewer, or other terminal
+role, do not inspect or control herdr, open panes or tabs, or spawn agents. complete the assigned role directly and
+return any scope problem to the caller.
+
+if `HERDR_ENV` is not set to `1`, say you are not running inside a herdr-managed pane and stop. do not inspect or
+control the focused herdr pane from outside herdr.
 
 you are running inside herdr, a terminal-native agent multiplexer. herdr gives you workspaces, tabs, and panes — each pane is a real terminal with its own shell, agent, server, or log stream — and you can control all of it from the cli.
 
