@@ -63,7 +63,7 @@
     },
     {
       "id": 11,
-      "prompt": "Project instructions map Core to packages/core, Server to packages/server, Client to packages/client, Docs to user-facing docs, and Tooling to root build scripts. ADM-313 will change core and server contracts, update a generated client fixture, edit the host guide, and adjust the root pack check. Choose its labels.",
+      "prompt": "The repository's root LINEAR.md maps Core to packages/core, Server to packages/server, Client to packages/client, Docs to user-facing docs, and Tooling to root build scripts. ADM-313 will change core and server contracts, update a generated client fixture, edit the host guide, and adjust the root pack check. Choose its labels.",
       "expected_output": "The agent applies Core, Server, Docs, and Tooling because they are meaningful parts of the outcome, omits Client when only an incidental generated fixture changes, adds the correct single type label from the issue intent, and keeps all labels through completion.",
       "files": []
     },

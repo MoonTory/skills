@@ -13,9 +13,11 @@ Read the focused reference when the task needs it:
 - Exploration, Plan, or Review documents: `references/artifacts.md`.
 - Any issue comment: `references/comments.md`.
 
+When the repository root contains `LINEAR.md`, read it for project identifiers, label mappings, and other local bindings before resolving tracked work. The file supplements repository instructions; it does not replace this workflow or grant Linear access without a configured `linear` MCP server.
+
 ## Start with the real context
 
-1. Read the repository instructions and the active issue before planning or changing work.
+1. Read the repository instructions, root `LINEAR.md` when present, and the active issue before planning or changing work.
 2. Confirm that a configured `linear` MCP server exists. A globally installed skill is not permission to add Linear to an unrelated project.
 3. Before the first write in a session, use read calls to identify the authenticated Linear actor, workspace, team, project, and active issue. Recheck after a handoff, reconnect, or profile change.
 4. Match the assigned workflow role to the authenticated actor. Reads are safe when they do not match; writes are not. Stop and report the mismatch instead of writing under the wrong name.
