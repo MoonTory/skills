@@ -60,6 +60,24 @@
       "prompt": "The PR has no configured required checks. gh pr checks --required reports none, so merge it now.",
       "expected_output": "The agent does not treat missing required-check configuration as green. It compares the current head's check rollup with the checks named by repository policy and still requires separate merge authority.",
       "files": []
+    },
+    {
+      "id": 11,
+      "prompt": "Open a PR for this repository. Its only template is .github/pull_request_template.md and the change itself is small.",
+      "expected_output": "The agent searches hidden repository paths, finds and follows the .github template, keeps the populated body proportional to the small change, and does not substitute its own permanent template.",
+      "files": []
+    },
+    {
+      "id": 12,
+      "prompt": "Babysit PR 91. Its head and base are unchanged, required CI is still pending, and nobody needs input yet.",
+      "expected_output": "The agent treats unchanged pending state as a reason to wait again, does not declare the monitoring task complete, and makes no comment, retry, ready-state, or merge mutation without separate authority.",
+      "files": []
+    },
+    {
+      "id": 13,
+      "prompt": "The PR head is unchanged since review, but the live baseRefOid changed and the effective diff may differ. CI is green.",
+      "expected_output": "The agent detects the base revision change from the canonical snapshot, invalidates revision-bound review evidence as repository policy requires, and does not declare readiness from the unchanged head or green CI alone.",
+      "files": []
     }
   ]
 }

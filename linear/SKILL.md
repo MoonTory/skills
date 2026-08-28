@@ -47,11 +47,11 @@ Use separated authorship. The actor visible in Linear should show which role pro
 | Owner input | None | Owner, or Orchestrator with clear Owner attribution | Orchestrator |
 | Landing | Orchestrator | Orchestrator | Orchestrator |
 
-The human owner remains the assignee. The Orchestrator changes the app delegate at phase boundaries. Planner, Builder, and Reviewer publish through their matching app identities, but they never change status, labels, assignee, delegate, project, priority, milestone, or relations.
+When the project declares a human Owner, that person remains the assignee from issue creation through completion. The Orchestrator changes the app delegate at phase boundaries. Planner, Builder, and Reviewer publish through their matching app identities, but they never change status, labels, assignee, delegate, project, priority, milestone, or relations.
 
 The Orchestrator is the sole metadata and status writer. It reads the role's published evidence before changing the issue. It does not normally publish a Planner, Builder, or Reviewer artifact on that role's behalf. If the correct role cannot publish, stop the phase and repair the role connection instead of flattening authorship.
 
-A directly authenticated human acts as Owner. Do not call the human session Orchestrator, Planner, Builder, or Reviewer. A role assignment may narrow an actor's authority but cannot widen it.
+A directly authenticated human acts only as themselves. Resolve the human Owner from live assignment plus project policy or explicit user direction; authentication alone does not confer Owner authority. Preserve an existing human assignee, and stop before creating or reassigning an issue when no authoritative Owner can be resolved. Do not call the human session Orchestrator, Planner, Builder, or Reviewer. A role assignment may narrow an actor's authority but cannot widen it.
 
 ## Status contract
 
@@ -65,7 +65,7 @@ Only the Orchestrator changes status.
 | `Ready` | Scoped, approved, unblocked, and executable |
 | `In Progress` | A Builder is actively working on a ticket branch |
 | `In Review` | The current implementation round is ready for an independent verdict |
-| `Ready To Land` | Review and Owner gates passed; the ticket branch has not entered the main branch |
+| `Ready To Land` | Review and Owner gates passed; the approved change has not landed through the repository's chosen merge strategy |
 | `Done` | The approved work landed in the main branch and passed final verification |
 | `Canceled` | Intentionally stopped and not expected to resume |
 | `Duplicate` | Replaced by another linked issue |
@@ -126,7 +126,7 @@ When a remote exists, the same contract maps to a pull request. Do not treat wor
 
 ### Orchestrator
 
-- Own all issue metadata, status, assignment, delegation, labels, relations, owner decisions, coordination records, and landing evidence.
+- Own all issue metadata writes, including status, assignment, delegation, labels, relations, owner decisions, coordination records, and landing evidence. This grants authority to record the resolved Owner, not to choose one.
 - Delegate the active phase to Planner, Builder, Reviewer, or itself, while leaving the human assignee unchanged.
 - Read the active role's published artifact or comment before applying the next transition.
 - Preview broad issue creation, restructuring, or a new dependency graph before writing it.
@@ -135,7 +135,7 @@ When a remote exists, the same contract maps to a pull request. Do not treat wor
 
 ### Planner
 
-- Own exploration, architecture, scoping, issue proposals, dependencies, acceptance criteria, ordering, and validation strategy.
+- Own exploration, architecture, scoping, issue proposals, proposed dependencies, acceptance criteria, ordering, and validation strategy. The Orchestrator alone writes relations.
 - Publish one canonical Exploration or Plan document per distinct scope when the work needs a durable artifact.
 - Make issue proposals executable without filling in a product or architecture decision.
 - Publish a concise Plan ready comment, then hand control to the Orchestrator.
@@ -153,7 +153,7 @@ When a remote exists, the same contract maps to a pull request. Do not treat wor
 
 - Review the current issue contract, linked artifacts, implementation evidence, and ticket branch without inheriting the Builder's assumptions.
 - Publish actionable findings with evidence and a clear pass or reject verdict.
-- Create one Review document for the scope when the review needs durable structure. Update that same document through rejection, fixes, and final approval.
+- Create one Review document whenever a review has a blocking finding, spans more than one implementation round, binds to an exact revision, or otherwise needs durable structure. Update that same document through rejection, fixes, and final approval.
 - Recheck every changed implementation round before approving it.
 - Do not change issue metadata or status, implement fixes, or land the branch.
 
@@ -168,8 +168,19 @@ The issue description always contains the current:
 - **Scope:** what is included and explicitly excluded.
 - **Acceptance criteria:** checkable results, not implementation activity.
 - **Validation:** checks and real-product evidence required before completion.
-- **Dependencies:** only real ordering or context dependencies.
+- **Dependencies:** true blocking or ordering dependencies only, stated with direction. Put background links in Context or `relatedTo`.
 - **Open decisions:** unresolved choices that keep the issue in `Scoping` or move it to `Needs Input`.
+
+The prose and live relation graph must agree:
+
+- If issue A depends on issue B, A is `blockedBy` B and B `blocks` A.
+- `relatedTo` records useful context only. It never satisfies a written ordering dependency.
+- Parent, duplicate, and release relations do not stand in for blocking direction.
+- Keep a satisfied blocker for history unless the contract itself changed; a completed blocker is satisfied, not absent.
+
+Planner proposes dependency changes in the Plan or issue proposal. Orchestrator writes them, reads both sides back, and checks parity before moving an issue to `Ready` or starting implementation.
+
+Before writing a blocking relation, read both issues and their current relations. Reject self-links, duplicate edges, and dependency cycles. After writing, read both ends back. An unresolved blocker prevents `Ready`; a context link never does.
 
 The Orchestrator updates this contract before implementation resumes after a material rescope. Do not add a permanent repository-location field merely to say where the project lives. Cite source links, commits, pull requests, checks, stable previews, or report paths that actually exist. Never use a local-only URL as durable evidence.
 
@@ -198,6 +209,7 @@ Do not copy full plans, reviews, raw test output, temporary URLs, or internal ex
 ## Mutation rules
 
 - Read the current object immediately before changing it and preserve fields outside the actor's responsibility.
+- When the project declares a human Owner, verify that assignee before every status or delegate transition and repair a missing assignment before continuing.
 - Verify the actor again before the first write after any reconnect, profile change, or long pause.
 - Stop if the authenticated actor does not match the assigned role.
 - Show the exact proposal and wait for approval before broad issue creation, bulk restructuring, or a new dependency graph.
@@ -229,4 +241,4 @@ Evidence: <checks, branch, artifact, or verdict>
 Next: <one concrete action and expected role>
 ```
 
-Completion means the landed work and Linear agree. `Done` requires the ticket branch to be in the main branch and the promised validation to pass on that landed tree. A role finishing its response, one passing check, or an idle runtime is not completion.
+Completion means the landed work and Linear agree. `Done` requires the approved change to have landed through the repository's chosen merge strategy, the exact landed commit to be recorded, and the promised validation to pass on that landed tree. A role finishing its response, one passing check, or an idle runtime is not completion.

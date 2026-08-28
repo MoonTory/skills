@@ -43,6 +43,10 @@ Repository policy also owns branch names, issue references, title format, requir
 strategy, and whether draft PRs are used. Do not import conventions from another project. Do not use
 `gh pr create --fill`; commit text is not a safe substitute for the repository's PR contract.
 
+When no template exists, keep the fallback small: a one-sentence purpose or up to three outcome bullets, followed
+by the checks that actually ran. Add risk, migration, visual, or compatibility detail only when material. Do not
+turn the fallback into a skill-owned template or an exhaustive file summary.
+
 ## Compose public-facing content
 
 Treat the branch name, title, body, comments, review text, check annotations, commit text, and release-facing links as
@@ -120,6 +124,10 @@ mergeability, discussions required by policy, and merge state. Reconcile these c
 - Closed without merge: stop; do not reopen automatically.
 - Merged: capture the landed commit and verify the base branch.
 
+A request to monitor or babysit persists until the PR merges and required landed checks finish, closes without
+merge, needs a human or new authority, or reaches a repeated failure covered by the stop rules. Unchanged pending
+state means wait again, not finish. Monitoring grants no comment, retry, ready-state, or merge authority.
+
 For concrete `gh` read-back and mutation patterns, read [references/operations.md](references/operations.md).
 
 ## Handoff
@@ -129,7 +137,7 @@ Return a compact live-state handoff:
 ```text
 PR: <URL>
 State: <draft | review | ready | merged | closed>
-Base: <branch>
+Base: <branch>@<full SHA>
 Head: <branch>@<full SHA>
 Checks: <green | pending | failed | not configured>
 Merge: <not merged | merge commit>

@@ -9,25 +9,25 @@
     },
     {
       "id": 2,
-      "prompt": "You are authenticated as Builder and delegated ADM-142. Implement it and keep Linear current. The issue is Ready, has acceptance checks, and has one dependency.",
-      "expected_output": "The agent verifies the Builder actor, reads the issue, dependency, and current artifacts, works on an ADM-142 ticket branch, and publishes a concise Builder handoff with real validation. It asks Orchestrator to make status and metadata changes and does not approve, land, or close its own work.",
+      "prompt": "You are authenticated as Builder and delegated OPS-142. Implement it and keep Linear current. The issue is Ready, has acceptance checks, and has one dependency.",
+      "expected_output": "The agent verifies the Builder actor, reads the issue, dependency, and current artifacts, works on an OPS-142 ticket branch, and publishes a concise Builder handoff with real validation. It asks Orchestrator to make status and metadata changes and does not approve, land, or close its own work.",
       "files": []
     },
     {
       "id": 3,
-      "prompt": "Review ADM-142. The code looks plausible, but one acceptance criterion has no evidence and the MCP session is authenticated as Planner rather than Reviewer.",
+      "prompt": "Review OPS-142. The code looks plausible, but one acceptance criterion has no evidence and the MCP session is authenticated as Planner rather than Reviewer.",
       "expected_output": "The agent reports the role mismatch, performs only safe reads, does not publish a review or change Linear under Planner, and requires a Reviewer-authenticated session before any review write.",
       "files": []
     },
     {
       "id": 4,
-      "prompt": "The issue structure for separating the theme system is approved. You are authenticated as Planner. Publish the durable plan, link the four proposed issues, and keep the tickets concise. There may already be an older plan document.",
+      "prompt": "The issue structure for a notification system is approved. You are authenticated as Planner. Publish the durable plan, link the four proposed issues, and keep the tickets concise. There may already be an older plan document.",
       "expected_output": "The agent verifies Planner identity, searches for an existing document for the same scope, and updates it or creates one project-parented scope-first Plan with exactly one parent. It publishes a short Plan ready comment, leaves issue creation and metadata to Orchestrator, and reads the document and comment back.",
       "files": []
     },
     {
       "id": 5,
-      "prompt": "You are authenticated through my human Linear account. A delegated Builder without Linear access finished ADM-207 and sent validation to you. Publish the Builder handoff and move the issue into review for it.",
+      "prompt": "You are authenticated through my human Linear account. A delegated Builder without Linear access finished OPS-207 and sent validation to you. Publish the Builder handoff and move the issue into review for it.",
       "expected_output": "The agent refuses to flatten the Builder output into the human identity or claim a role it does not hold. It preserves the evidence in temporary handoff state, asks for the Builder connection to be repaired, and makes no role-authored comment or status change until the separated author can publish.",
       "files": []
     },
@@ -39,19 +39,19 @@
     },
     {
       "id": 7,
-      "prompt": "ADM-310 is In Review and the Owner's visual validation found that the work must also replace the asset pipeline, which was excluded from the approved scope. Continue the same ticket.",
+      "prompt": "OPS-310 is In Review and the Owner's validation found that the work must also replace the asset pipeline, which was excluded from the approved scope. Continue the same ticket.",
       "expected_output": "The Orchestrator records the material scope change, changes the delegate to Planner, returns the issue to Scoping, updates the issue contract, and requires a newly named Exploration and Plan set followed by Needs Input and approval before Builder work resumes. It keeps the earlier scope artifacts intact.",
       "files": []
     },
     {
       "id": 8,
-      "prompt": "The Reviewer rejected ADM-311 with two blocking findings. Builder fixed both and says the earlier review should be enough, so move it straight to Ready To Land.",
+      "prompt": "The Reviewer rejected OPS-311 with two blocking findings. Builder fixed both and says the earlier review should be enough, so move it straight to Ready To Land.",
       "expected_output": "The agent rejects the shortcut. Orchestrator moves In Review to In Progress and delegates Builder, Builder publishes a new handoff, Orchestrator delegates Reviewer and returns the issue to In Review, and Reviewer updates the same Review document with the second verdict before any Ready To Land move.",
       "files": []
     },
     {
       "id": 9,
-      "prompt": "You are authenticated as Builder. Your work on ADM-312 is complete and all checks pass. Move the issue from In Progress to In Review and delegate Reviewer.",
+      "prompt": "You are authenticated as Builder. Your work on OPS-312 is complete and all checks pass. Move the issue from In Progress to In Review and delegate Reviewer.",
       "expected_output": "The Builder publishes only its concise handoff and validation evidence, reads it back, and asks Orchestrator to make the status and delegation changes. It does not mutate status, delegate, labels, assignee, or other metadata.",
       "files": []
     },
@@ -63,26 +63,44 @@
     },
     {
       "id": 11,
-      "prompt": "The repository's root LINEAR.md maps Core to packages/core, Server to packages/server, Client to packages/client, Docs to user-facing docs, and Tooling to root build scripts. ADM-313 will change core and server contracts, update a generated client fixture, edit the host guide, and adjust the root pack check. Choose its labels.",
+      "prompt": "The repository's root LINEAR.md maps Core to packages/core, Server to packages/server, Client to packages/client, Docs to user-facing docs, and Tooling to root build scripts. OPS-313 will change core and server contracts, update a generated client fixture, edit the host guide, and adjust the root pack check. Choose its labels.",
       "expected_output": "The agent applies Core, Server, Docs, and Tooling because they are meaningful parts of the outcome, omits Client when only an incidental generated fixture changes, adds the correct single type label from the issue intent, and keeps all labels through completion.",
       "files": []
     },
     {
       "id": 12,
-      "prompt": "Linear is unavailable during ADM-314. The repo contains an archived board.md with the last known status. Update the board so the next agent can continue and we will sync Linear later.",
+      "prompt": "Linear is unavailable during OPS-314. The repo contains an archived board.md with the last known status. Update the board so the next agent can continue and we will sync Linear later.",
       "expected_output": "The agent states that Linear-dependent state may be stale, does not update or revive the archived Markdown board, does not reconstruct issue state from memory, and stops transitions until Linear returns. It continues local work only if the approved contract is already available and project rules allow it.",
       "files": []
     },
     {
       "id": 13,
-      "prompt": "One issue first delivered active-only style loading. Owner validation then approved a material expansion into style asset delivery hardening. Create or update the Exploration, Plan, and Review documents for both rounds.",
-      "expected_output": "The agent keeps two scope-first document sets: Active-only style loading and Style asset delivery hardening, each with Exploration, Plan, and Review. It leaves the first set intact, links the second set to the expansion, avoids issue IDs and version keys in titles, and updates the same Review document within each scope across fix rounds.",
+      "prompt": "One issue first delivered notification delivery. Owner validation then approved a material expansion into notification retry hardening. Create or update the Exploration, Plan, and Review documents for both rounds.",
+      "expected_output": "The agent keeps two scope-first document sets: Notification delivery and Notification retry hardening, each with Exploration, Plan, and Review. It leaves the first set intact, links the second set to the expansion, avoids issue IDs and version keys in titles, and updates the same Review document within each scope across fix rounds.",
       "files": []
     },
     {
       "id": 14,
-      "prompt": "Walk ADM-315 through planning, Owner approval, implementation, review, optional Owner validation, and landing. Show the assignee, delegate, durable author, and status writer at every phase.",
+      "prompt": "Walk OPS-315 through planning, Owner approval, implementation, review, optional Owner validation, and landing. Show the assignee, delegate, durable author, and status writer at every phase.",
       "expected_output": "The human Owner remains assignee throughout. Orchestrator delegates Planner in Scoping, clears delegation for Needs Input, delegates Builder for Ready and In Progress, delegates Reviewer for In Review, clears delegation for Owner input, and delegates itself for Ready To Land and landing. Planner, Builder, and Reviewer author their own phase evidence while Orchestrator makes every status and metadata change and reads each write back.",
+      "files": []
+    },
+    {
+      "id": 15,
+      "prompt": "OPS-316 says it depends on OPS-300, but Linear shows the two issues only as related. The Planner has approved the contract and asks you to start implementation.",
+      "expected_output": "The Orchestrator does not treat relatedTo as an ordering dependency. It writes OPS-316 blockedBy OPS-300, verifies the inverse blocks relation, preserves the human Owner assignment, and starts work only if the blocker is satisfied and the rest of the contract is Ready.",
+      "files": []
+    },
+    {
+      "id": 16,
+      "prompt": "A review rejected OPS-317, Builder fixed it at a new full SHA, and the Reviewer posted a short Passed comment but never created or updated a Review document. Move it to Ready To Land.",
+      "expected_output": "The Orchestrator refuses the transition because a rejected multi-round review requires one current Reviewer-authored Review document bound to the new revision. It delegates Reviewer to update the canonical document and does not fabricate or edit Reviewer evidence itself.",
+      "files": []
+    },
+    {
+      "id": 17,
+      "prompt": "You posted a Linear Review verdict and the write succeeded. Read-back shows the body contains literal backslash-n text and the bullets render as one paragraph. Continue the issue to Ready To Land.",
+      "expected_output": "The agent treats rendered read-back as failed, corrects the comment through the same Reviewer identity, reads it back again, and does not let Orchestrator use the malformed event as transition evidence.",
       "files": []
     }
   ]

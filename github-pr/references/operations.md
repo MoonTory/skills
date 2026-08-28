@@ -29,8 +29,10 @@ Do not switch branches, clean the tree, stage files, or rewrite commits as part 
 
 Search the repository rather than using a skill-owned template:
 
+Run from the repository root:
+
 ```sh
-rg --files -g 'pull_request_template.md' -g 'PULL_REQUEST_TEMPLATE.md' -g '**/PULL_REQUEST_TEMPLATE/*.md'
+rg --files --hidden -g '!.git/**' -g 'pull_request_template.md' -g 'PULL_REQUEST_TEMPLATE.md' -g '**/PULL_REQUEST_TEMPLATE/*.md'
 ```
 
 Read contribution instructions and the selected template in full. Prepare the populated body in a temporary file
@@ -72,11 +74,11 @@ After each action, read the exact object back.
 Use one structured snapshot for decisions and resume:
 
 ```sh
-gh pr view <number-or-url> --json number,url,state,isDraft,title,body,baseRefName,headRefName,headRefOid,mergeable,mergeStateStatus,reviewDecision,statusCheckRollup,mergedAt,mergeCommit
+gh pr view <number-or-url> --json number,url,state,isDraft,title,body,baseRefName,baseRefOid,headRefName,headRefOid,mergeable,mergeStateStatus,reviewDecision,statusCheckRollup,mergedAt,mergeCommit
 ```
 
-Record the full `headRefOid`; a short SHA is display text, not a review key. Re-read this snapshot after waiting for
-checks or a human action.
+Record the full `headRefOid` and `baseRefOid`; short SHAs and branch names are display text, not review keys. Re-read
+this snapshot after waiting for checks or a human action.
 
 ## Checks
 

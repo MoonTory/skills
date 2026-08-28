@@ -22,6 +22,8 @@ A standard comment has one short heading and at most four bullets. Include only:
 
 Omit a bullet when it adds no useful fact. A short event may need only two bullets.
 
+Never copy a multi-round review history into a landing comment. The Review document owns that history; the event comment links it and states the current outcome.
+
 ## Author and mutation rules
 
 - Planner posts Plan ready.
@@ -63,7 +65,7 @@ If the authenticated actor does not match the required author, stop instead of p
 **Review verdict — <Passed | Changes required>**
 
 - Outcome: <one-sentence verdict>.
-- Evidence: <Review document URL or concise finding summary>.
+- Evidence: <Review document URL and reviewed full SHA, or concise finding summary for a simple non-revision review>.
 - Blocking findings: <None or short list>.
 - Next: <Ready To Land, Owner validation, or Builder fixes>.
 ```
@@ -131,5 +133,8 @@ After posting:
 3. Confirm the issue.
 4. Confirm the rendered content and links.
 5. Confirm that no excluded execution detail escaped into Linear.
+6. Confirm that intended blocks and links render correctly rather than as literal `\\n`, `\\r`, `\\t`, collapsed lists, or broken link text.
+
+If read-back fails, the same role author corrects the comment before Orchestrator accepts it as transition evidence.
 
 Report the comment URL or ID when the tool returns one. Never claim the comment exists from intent alone.

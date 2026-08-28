@@ -23,12 +23,12 @@ Title every artifact:
 
 Examples:
 
-- `Active-only style loading — Exploration`
-- `Active-only style loading — Plan`
-- `Active-only style loading — Review`
-- `Style asset delivery hardening — Exploration`
-- `Style asset delivery hardening — Plan`
-- `Style asset delivery hardening — Review`
+- `Notification delivery — Exploration`
+- `Notification delivery — Plan`
+- `Notification delivery — Review`
+- `Notification retry hardening — Exploration`
+- `Notification retry hardening — Plan`
+- `Notification retry hardening — Review`
 
 Lead with the scope so several artifact sets remain easy to scan. Use `Exploration`, `Plan`, or `Review` as the artifact type.
 
@@ -41,7 +41,7 @@ Keep one Exploration, one Plan, and one Review document per distinct scope:
 - Update the issue contract before implementation of the new scope resumes.
 - Reviewer updates the same Review document through rejection, Builder fixes, recheck, and final verdict.
 
-Never add `v2`, `latest`, `final`, issue-derived suffixes such as `ADM-7B`, or agent-made batch, wave, or worker keys. Do not repeat the issue ID in the title when the document is already parented to that issue.
+Never add `v2`, `latest`, `final`, issue-derived suffixes such as `PROJ-7B`, or agent-made batch, wave, or worker keys. Do not repeat the issue ID in the title when the document is already parented to that issue.
 
 ## Parent and update rules
 
@@ -63,6 +63,8 @@ After every save, read the document back and verify:
 - Parent.
 - Returned URL.
 
+Inspect the rendered Markdown, not only the raw write response. Visible `\\n` or `\\t`, collapsed lists, broken links, or lost block breaks mean the write failed. The same role author repairs the same document and reads it back again before handoff.
+
 ## Markdown that renders well
 
 Linear converts Markdown into its rich-text editor. Use this stable subset:
@@ -73,7 +75,7 @@ Linear converts Markdown into its rich-text editor. Use this stable subset:
 - Bulleted lists, numbered lists, and task lists using `- [ ]` and `- [x]`.
 - Fenced code blocks with a language when known.
 - Pipe tables with a header row.
-- `___` for a divider.
+- `---` for a divider.
 - Mermaid in a fenced `mermaid` block when a diagram makes a real relationship easier to understand.
 - API-created collapsible sections with `+++ Section title`, followed by the content and a closing `+++`.
 
@@ -89,7 +91,7 @@ Remove empty or irrelevant sections instead of leaving filler text.
 
 ```markdown
 - **Artifact status:** Draft
-- **Owner:** Planner
+- **Authoring role:** Planner
 - **Related work:** <project and issue links>
 - **Last reviewed:** YYYY-MM-DD
 
@@ -133,7 +135,7 @@ The artifact status describes the plan, not implementation progress. Linear issu
 
 ```markdown
 - **Artifact status:** Draft
-- **Owner:** Planner
+- **Authoring role:** Planner
 - **Related work:** <project and issue links>
 - **Last reviewed:** YYYY-MM-DD
 
@@ -163,9 +165,11 @@ The artifact status describes the plan, not implementation progress. Linear issu
 
 ## Work breakdown
 
-| Work item | Outcome | Depends on | State |
+| Work item | Outcome | Blocked by | State |
 | --- | --- | --- | --- |
 | <issue link or proposed title> | <checkable result> | <issue link or None> | Proposed |
+
+Every accepted `Blocked by` value maps to the issue's live `blockedBy` relation; `Proposed` rows remain previews until Orchestrator writes and reads back the relation. Put context-only links in Related work, not this column.
 
 ## Acceptance criteria
 
@@ -195,15 +199,18 @@ Keep one Review document for the scope. Update its current verdict and append a 
 
 ```markdown
 - **Artifact status:** Active
-- **Owner:** Reviewer
+- **Authoring role:** Reviewer
 - **Related work:** <issue, branch, and Plan links>
+- **Review target:** <pull request, branch, diff, or other stable target>
+- **Head revision:** <full SHA or immutable revision; N/A with reason>
+- **Base revision:** <full SHA or immutable base; N/A with reason>
 - **Last reviewed:** YYYY-MM-DD
 
 ---
 
 ## Verdict
 
-<Pass | Changes required>
+<Pending re-review | Pass | Changes required>
 
 ## Scope reviewed
 
@@ -225,9 +232,9 @@ Keep one Review document for the scope. Update its current verdict and append a 
 
 ## Review cycles
 
-| Date       | Implementation round | Verdict          | Notes           |
-| ---------- | -------------------- | ---------------- | --------------- |
-| YYYY-MM-DD | Initial              | Changes required | <short summary> |
+| Date       | Implementation round | Revision | Verdict          | Notes           |
+| ---------- | -------------------- | -------- | ---------------- | --------------- |
+| YYYY-MM-DD | Initial              | <full SHA or immutable revision> | Changes required | <short summary> |
 
 ## Final approval
 
@@ -237,9 +244,12 @@ Keep one Review document for the scope. Update its current verdict and append a 
 ## Keeping artifacts current
 
 - Planner updates the Exploration or Plan when evidence or decisions change inside the current scope.
+- Planner changes a Plan from `Draft` to `Ready` before publishing Plan ready, updates `Last reviewed`, and clears or records every resolved Owner decision. A document that still says Draft or awaiting approval cannot support execution.
 - A material scope change returns the issue to `Scoping`, updates the issue contract, and starts a new named artifact set.
 - Builder reads the current set before work and reports contradictions instead of silently rewriting Planner or Reviewer documents.
-- Reviewer records every rejected and approved implementation round in the same Review document for that scope.
+- Reviewer records every rejected and approved implementation round and its exact revision in the same Review document for that scope. It marks the current verdict `Changes required` or `Pass`; a new revision retains earlier cycles but resets the current verdict to `Pending re-review` until the Reviewer checks and records the new target.
 - Orchestrator reads the role-authored artifact before changing status or delegation.
+- Orchestrator does not advance a phase when the canonical artifact still claims Draft, pending approval, an unresolved blocking decision, an older review revision, or another state that contradicts the proposed transition. It returns the artifact to its authoring role rather than editing another role's evidence.
+- When the review target is mutable, Orchestrator compares its live revision and base with the Reviewer-recorded values before `Ready To Land`. It never edits Reviewer-owned target or verdict evidence to make them match.
 
 Link the canonical artifact from the issue and short event comment. Do not copy its full content into the issue description or comments.
