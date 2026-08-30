@@ -85,6 +85,10 @@ artifact and current state.
 - Do not treat the absence of configured required checks as proof that the repository's expected checks passed.
 - Re-read the head after waiting for CI so a concurrent push cannot attach old results to a new revision.
 
+When the active workflow asks this session to babysit a pending check, review, merge, or base-branch run, arm its
+persistent wait mechanism before yielding. Name the exact PR or run, watcher owner, and wake condition. Do not depend
+on the user noticing that an external gate finished and prompting the session to resume.
+
 ### Ready to merge
 
 Apply the repository's own landing gate. A strict gate normally requires an open non-draft PR, the intended base,
@@ -99,6 +103,9 @@ that the PR is ready and monitor only when the user asked for follow-up.
 After a merge, capture `mergedAt` and the merge commit from live GitHub state. Verify the repository's required
 post-merge checks against that exact commit before calling the work complete. A PR closed without merge is not
 landed. An unexpected merge strategy or failing base-branch check is a policy or delivery failure, not success.
+
+Post-merge verification grants no permission to update a shared local base checkout. Prefer live GitHub evidence or
+an isolated checkout; mutate a shared checkout only when the repository workflow grants that exact authority.
 
 ## Identity and communication
 

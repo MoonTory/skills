@@ -78,6 +78,12 @@
       "prompt": "The PR head is unchanged since review, but the live baseRefOid changed and the effective diff may differ. CI is green.",
       "expected_output": "The agent detects the base revision change from the canonical snapshot, invalidates revision-bound review evidence as repository policy requires, and does not declare readiness from the unchanged head or green CI alone.",
       "files": []
+    },
+    {
+      "id": 14,
+      "prompt": "Babysit this PR. CI is pending, so stop now and wait for me to tell you when it finishes. After merge, update my shared local main checkout for verification.",
+      "expected_output": "The agent arms the active workflow's persistent watcher for the exact PR or run before yielding and names its wake condition. It does not depend on the user to resume monitoring and does not mutate a shared local base checkout without separate authority.",
+      "files": []
     }
   ]
 }

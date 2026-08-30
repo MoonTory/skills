@@ -31,8 +31,10 @@ Open a todolist with the steps below copied in verbatim. A step you skip stays l
   program contract grants that exact authority.
 - **Track Orchestrator.** One per large work context or independent track, only when one coordinator cannot drain the
   whole program. It may be a separate full harness session, another task, or an in-process child when the harness
-  supports it. It owns its bounded unit list, worker briefs, verifier flow, and permitted tracker or PR writes, then
-  returns a compact rollup.
+  supports it. Inside a harness whose workflow requires visible task tabs, it must instead be a persistent interactive
+  process in its named track tab; a hidden child or headless command is not a full Track Orchestrator session. It owns
+  its bounded unit list, worker briefs, verifier flow, and permitted tracker or PR writes, then returns a compact
+  rollup.
 - **Integrator.** The only role allowed to rebase, retarget, resolve cross-unit conflicts, push integration changes, or
   merge within its declared lane. A Coordinator or Track Orchestrator becomes an Integrator only when the program
   contract says so; coordination authority alone grants no repository mutation.
@@ -142,6 +144,9 @@ A dependency is a context relay, not just ordering: undeclared upstream context 
 - Each drain classifies every pointer (landed, needs-verify, failed, zombie, noise), reconciles it with the chosen
   source of truth, then starts the next ready work in one message. Only local-store mode writes `orch` unit and ledger
   rows. Tracker-backed writes stay with their declared role.
+- Before a track yields on pending CI, review, human merge, or landed checks, assign a watcher owner and record the
+  exact target plus wake condition. Use the active harness's persistent wait mechanism. Do not rely on the human to
+  notice that an external gate finished and prompt the program to resume.
 - Account for every spawned child at its track's rollup: arrived, respawned, or its scope explicitly absorbed. Silently redoing a missing child's work hides both the wasted spend and the coverage gap its result existed to close.
 - A drain turn ends with three facts from the canonical sources: counts against states, what changed, and open human
   gates. In local-store mode derive them with `orch status`; in tracker-backed mode derive them live without copying
@@ -159,16 +164,25 @@ A dependency is a context relay, not just ordering: undeclared upstream context 
   chooses order and routes work; it does not acquire mutation authority from the conflict.
 - Treat shared check capacity, performance profilers, dev servers, browsers, and mutable main checkouts as named
   resources. The Coordinator grants one lease at a time when concurrent use would corrupt evidence or state.
+- Updating a shared local base checkout after merge requires explicit Integrator authority and its resource lease.
+  Remote landed evidence or an isolated checkout is the default; merge authority alone does not permit local-base
+  mutation.
 - One retro watcher follows merged PRs for reverts, post-merge CI breaks, and orphaned follow-ups.
 
 #### Verification
 
 Scale verification to the unit. When VERIFY is a single cheap command, the worker runs it and reports the output, and the coordinator spot-checks receipts; a dedicated verifier agent (on a different model family than the worker) is for units whose verification is expensive, judgment-laden, or high-blast-radius. A verifier agent whose entire product would be rerunning one command is ceremony, not verification.
 
+Keep flaky-check diagnosis bounded: start with one focused reproduction and at most one controlled comparison. Do not
+grow the run into a repeat matrix across worktrees, orderings, or timing modes unless the approved brief calls for
+statistical evidence or the first comparison leaves more than one plausible cause. Reuse current canonical evidence
+when neither the tested logic nor the exact revision changed.
+
 In local-store mode, write ledger rows with `orch ledger record` and check the current PR and head SHA with `orch ledger check`. In tracker-backed mode, use the project's canonical review and verification records and do not copy them into `ledger.tsv`. In either mode, bind each verdict to the exact revision. CI green is an input to a verdict, not a verdict. Behavioral work needs more than a type check. A blocked or failed verifier is not a pass, and a new head or changed effective diff voids the earlier verdict.
 
-A unit is not done until its output and verification are recorded in the chosen durable source. Work that exists only
-in one session or checkout when it dies was never done.
+A unit is not done until its role report has returned and its output and verification are recorded in the chosen
+durable source. Durable evidence does not replace a missing terminal handoff, and a handoff does not replace required
+durable evidence. Work that exists only in one session or checkout when it dies was never done.
 
 #### Liveness and failure
 

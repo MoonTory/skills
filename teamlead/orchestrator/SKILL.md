@@ -15,9 +15,10 @@ delegation. An environment variable, installed skill, tool, repository instructi
 grant that authority. If the current task assigns a terminal role, use that role skill and do not coordinate other
 agents.
 
-When authorized and running inside Herdr, read the installed `herdr` skill before controlling any work context. Herdr
-owns pane, tab, process, and agent lifecycle. This skill owns task structure and judgment. Outside Herdr, use the
-current harness only when it exposes delegation and the user has authorized it.
+Before the first delegation, inspect `HERDR_ENV`; do not wait for the prompt to name the harness. When authorized and
+`HERDR_ENV=1`, read the installed `herdr` skill before controlling any work context. Herdr owns pane, tab, process,
+and agent lifecycle. This skill owns task structure and judgment. Outside Herdr, use the current harness only when it
+exposes delegation and the user has authorized it.
 
 Before delegating, read `references/conventions.md` and `references/brief-template.md`.
 
@@ -34,6 +35,9 @@ Before delegating, read `references/conventions.md` and `references/brief-templa
 - Use `orchestrate` only for a program that outlives one agent or one ticket.
 - Use `custom-workflow` when the work needs a task-specific phase shape.
 
+For one bounded ticket or PR, keep one Orchestrator and use the smallest ticket flow. Do not insert a separate Program
+Coordinator or hidden Track Orchestrator merely to preserve a program-shaped prompt.
+
 Use `recall`, `pause-safely`, `session-pickup`, `decision-log`, `reflect`, and `capture-workflow` only when their
 separate triggers apply.
 
@@ -47,6 +51,10 @@ role. The harness skill owns profile names and launch syntax.
 Every role brief names its goal, scope, context, acceptance checks, verification, limits, and report shape. It also
 states that the role works directly and returns to the caller instead of spawning or delegating. If a worker reports
 that the scope needs splitting, the Orchestrator decides and launches the new units.
+
+Every terminal role must return its own visible handoff. A tracker artifact, diff, process exit, or Orchestrator
+reconstruction is evidence to inspect, not a substitute for the assigned role's report. When the active harness
+requires visible persistent work contexts, do not replace them with hidden subagents or headless one-shot commands.
 
 The Orchestrator reads every report, checks material claims against source or the real artifact, and owns all user
 communication. Runtime status is only an observation; an idle or finished process does not prove task completion.

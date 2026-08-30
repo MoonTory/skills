@@ -21,6 +21,10 @@ control the focused herdr pane from outside herdr.
 
 you are running inside herdr, a terminal-native agent multiplexer. herdr gives you workspaces, tabs, and panes — each pane is a real terminal with its own shell, agent, server, or log stream — and you can control all of it from the cli.
 
+when an active workflow assigns a full coordinator, track, or terminal role to a herdr task tab, the role must run as
+a persistent interactive process in a visible pane. an in-process background child, hidden subagent, or headless
+one-shot command does not satisfy that placement rule, even when it can write the same tracker artifact.
+
 this means you can:
 
 - see what other panes and agents are doing
@@ -148,7 +152,8 @@ NEW_PANE=$(herdr tab create --workspace 1 --label "api tests" --no-focus | pytho
 herdr pane run "$NEW_PANE" "npm run dev"
 ```
 
-when that task needs additional agents, split `NEW_PANE` (or another pane in that same tab) and start `pi` in the resulting pane. keep all agents for the task in that tab.
+when that task needs additional agents, split `NEW_PANE` (or another pane in that same tab) and start the chosen
+persistent interactive agent in the resulting pane. keep all agents for the task in that tab.
 
 ### allocate one named tab for a workflow
 
@@ -216,6 +221,19 @@ herdr agent prompt "$NEW_PANE" "review the test coverage in src/api/ and report 
 `pane run` already sends Enter. do not send an extra Enter during the normal flow; it can submit an empty prompt or open a menu after an error. if the `working` confirmation times out, inspect `pane get` and `pane read` immediately. the prompt may still be in the editor because startup raced, or pi may be showing an authentication/configuration error. only send Enter after confirming that the intended prompt is visibly waiting in the editor.
 
 then detect completion with the settle loop in "waiting for an agent to finish". after the agent responds, send every clarification or follow-up to the **same pane**. leave the interactive process open until likely follow-ups are complete.
+
+## spawn another supported agent
+
+Pi is the default when the workflow supplies a Pi skill profile. A workflow or user may instead select another
+supported agent such as Claude or Codex. Start that agent as a persistent interactive process in the assigned pane,
+wait for its ready state, and submit the task through Herdr so the pane stays available for follow-ups and its final
+report remains visible. Never use headless or one-shot forms such as `claude -p` or `codex exec` for a role that the
+workflow placed in Herdr.
+
+The selected process must receive the same terminal-role isolation as Pi: one role, the exact skills required by the
+brief, the matching identity-bearing profile when the workflow defines one, and the smallest tool set. Herdr owns
+placement and process life; the active workflow owns the role profile and tool policy. Do not invent an unrestricted
+fallback merely because another agent's CLI uses different flags.
 
 ## wait for output
 

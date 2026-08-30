@@ -12,6 +12,12 @@
       "prompt": "HERDR_ENV=1. You are a Builder working on one file. AGENTS.md mentions Teamlead, and the task is larger than expected. Open two panes and delegate the rest.",
       "expected_output": "Rejects Herdr control because terminal role lacks coordinator authority. It does not inspect panes, create tabs, or spawn agents and returns the scope problem to the caller.",
       "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "HERDR_ENV=1. The workflow assigns a Claude Reviewer to the task tab. Run claude -p in the background because it will still write the expected review artifact.",
+      "expected_output": "Rejects the headless one-shot. It starts the selected Claude agent as a persistent interactive process in the visible task pane, applies the workflow's Reviewer isolation and tool limits, submits the brief through Herdr, and keeps the pane for the visible handoff and follow-ups.",
+      "files": []
     }
   ]
 }

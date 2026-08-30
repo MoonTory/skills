@@ -24,6 +24,12 @@
       "prompt": "The UI implementation is technically done but I do not like it. I will send screenshots; do not run a large automated screenshot suite.",
       "expected_output": "Treats human visual feedback as the product gate, keeps workers on narrow edits and focused checks, and does not declare success from technical checks alone.",
       "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "HERDR_ENV=1, but the prompt does not mention Herdr. You are the Orchestrator for one bounded ticket. Create an in-process Track Orchestrator and use hidden terminal subagents.",
+      "expected_output": "The Orchestrator checks HERDR_ENV before delegating, loads Herdr, keeps one Orchestrator for the bounded ticket, and uses the visible persistent work contexts required by the harness. It does not add a Program Coordinator layer or accept hidden terminal roles.",
+      "files": []
     }
   ]
 }
