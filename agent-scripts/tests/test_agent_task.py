@@ -34,6 +34,13 @@ class AgentTaskTests(unittest.TestCase):
         self.assertIn("prompted_at", detail)
         self.assertEqual(detail["status"], "idle")
 
+    def test_timeout_zero_returns_current_status_without_settle_wait(self):
+        result = run("timeout_zero", "--timeout", "0")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        envelope = json.loads(result.stdout)
+        self.assertEqual(envelope["event"], "settled")
+        self.assertEqual(envelope["detail"]["status"], "working")
+
     def test_prompt_retry(self):
         result = run("prompt_retry", "--no-startup")
         self.assertEqual(result.returncode, 0, result.stderr)

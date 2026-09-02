@@ -60,30 +60,31 @@ def main() -> int:
             screen = read_error
         script.fail(waitlib.EXIT_TOOL, "prompt-failed", {"screen": screen.rstrip()})
     prompted_at = script.clock.timestamp()
-    claude_baseline = None
-    if args.claude:
-        code, claude_baseline, stderr = waitlib.pane_lines(poller, args.pane)
+    if args.timeout != 0:
+        claude_baseline = None
+        if args.claude:
+            code, claude_baseline, stderr = waitlib.pane_lines(poller, args.pane)
+            if code != 0:
+                if waitlib.gone_error(stderr):
+                    script.fail(waitlib.EXIT_GONE, "gone", {"error": stderr.strip()})
+                script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": stderr.strip()})
+
+        timeout_ms = str(int(args.timeout * 1000))
+        if args.claude:
+            code, _, stderr = waitlib.wait_for_output(
+                script, poller, args.pane, regex="(?i)deviations",
+                source="recent-unwrapped", timeout=args.timeout,
+                baseline=claude_baseline,
+            )
+        else:
+            settle = ["herdr", "agent", "wait", args.pane, "--timeout", timeout_ms]
+            code, _, stderr = poller.run(settle, timeout=max(args.timeout + 5, 5))
         if code != 0:
             if waitlib.gone_error(stderr):
                 script.fail(waitlib.EXIT_GONE, "gone", {"error": stderr.strip()})
+            if code == 1:
+                script.fail(waitlib.EXIT_TIMEOUT, "timeout", {})
             script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": stderr.strip()})
-
-    timeout_ms = str(int(args.timeout * 1000))
-    if args.claude:
-        code, _, stderr = waitlib.wait_for_output(
-            script, poller, args.pane, regex="(?i)deviations",
-            source="recent-unwrapped", timeout=args.timeout,
-            baseline=claude_baseline,
-        )
-    else:
-        settle = ["herdr", "agent", "wait", args.pane, "--timeout", timeout_ms]
-        code, _, stderr = poller.run(settle, timeout=max(args.timeout + 5, 5))
-    if code != 0:
-        if waitlib.gone_error(stderr):
-            script.fail(waitlib.EXIT_GONE, "gone", {"error": stderr.strip()})
-        if code == 1:
-            script.fail(waitlib.EXIT_TIMEOUT, "timeout", {})
-        script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": stderr.strip()})
     code, stdout, stderr = poller.run(["herdr", "agent", "get", args.pane])
     if code != 0:
         if waitlib.gone_error(stderr):
