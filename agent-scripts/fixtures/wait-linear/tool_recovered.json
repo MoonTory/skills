@@ -1,0 +1,5 @@
+{"responses":[
+  {"cmd":"POST https://api.linear.app/graphql ADM-140","stdout":"","stderr":"HTTP 503 Service Unavailable","exit":503},
+  {"cmd":"POST https://api.linear.app/graphql ADM-140","stdout":"{\"data\":{\"issue\":{\"identifier\":\"ADM-140\",\"state\":{\"name\":\"Needs Input\"},\"comments\":{\"nodes\":[]}}}}","stderr":"","exit":0},
+  {"cmd":"POST https://api.linear.app/graphql ADM-140","stdout":"{\"data\":{\"issue\":{\"identifier\":\"ADM-140\",\"state\":{\"name\":\"Ready\"},\"comments\":{\"nodes\":[]}}}}","stderr":"","exit":0}
+]}

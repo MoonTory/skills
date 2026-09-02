@@ -57,6 +57,9 @@ Choose markers that do not appear in the command sent to the pane so the intende
 - `wait-ci` waits for PR or commit checks; exits 0 green or red, 2 closed or head changed, 3 timeout or no run, or 4 tool failure.
 - `wait-merged` waits for a PR merge; exits 0 merged, 2 closed, 3 timeout, or 4 tool failure.
 - `wait-branch-gone` waits for remote branch deletion; exits 0 gone, 2 absent, 3 timeout, or 4 tool failure.
+- `wait-linear` waits for a Linear comment or state change; exits 0 changed or baseline, 2 not found, 3 timeout, or 4 API failure.
+- `wake-on` queues a wait command for the Claude hook; exits 0 queued.
+- `wake-run` runs queued waits; exits 0 for an empty queue or 2 when a wait finishes.
 
 ## Tests
 

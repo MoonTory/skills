@@ -1,0 +1,7 @@
+{"responses":[
+  {"cmd":"POST https://api.linear.app/graphql ADM-140","stdout":"","stderr":"HTTP 503 Service Unavailable 1","exit":503},
+  {"cmd":"POST https://api.linear.app/graphql ADM-140","stdout":"","stderr":"HTTP 503 Service Unavailable 2","exit":503},
+  {"cmd":"POST https://api.linear.app/graphql ADM-140","stdout":"","stderr":"HTTP 503 Service Unavailable 3","exit":503},
+  {"cmd":"POST https://api.linear.app/graphql ADM-140","stdout":"","stderr":"HTTP 503 Service Unavailable 4","exit":503},
+  {"cmd":"POST https://api.linear.app/graphql ADM-140","stdout":"","stderr":"HTTP 503 Service Unavailable 5","exit":503}
+]}

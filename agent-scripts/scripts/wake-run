@@ -1,0 +1,64 @@
+#!/usr/bin/env python3
+import os
+import queue
+import shlex
+import subprocess
+import sys
+import threading
+
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+import waitlib
+
+
+def finish(index, process, completed):
+    stdout, stderr = process.communicate()
+    completed.put((index, stdout, stderr))
+
+
+def envelope(stdout):
+    lines = [line for line in stdout.splitlines() if line.strip()]
+    return lines[-1] if lines else ""
+
+
+def main():
+    script = waitlib.Script("wake-run", timeout=0, interval=0)
+    script.parse()
+    path = waitlib.wake_queue_path()
+    running = path.with_suffix(".running")
+    try:
+        os.rename(path, running)
+    except FileNotFoundError:
+        return 0
+
+    processes = []
+    try:
+        commands = []
+        for line in running.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            _, separator, command = line.partition("\t")
+            if separator and command:
+                commands.append(shlex.split(command))
+        if not commands:
+            return 0
+
+        completed = queue.Queue()
+        for index, command in enumerate(commands):
+            process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            processes.append(process)
+            threading.Thread(target=finish, args=(index, process, completed), daemon=True).start()
+
+        index, stdout, _ = completed.get()
+        result = envelope(stdout)
+        if result:
+            print(result, file=sys.stderr)
+        for other_index, process in enumerate(processes):
+            if other_index != index and process.poll() is None:
+                process.terminate()
+        return waitlib.EXIT_GONE
+    finally:
+        running.unlink(missing_ok=True)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

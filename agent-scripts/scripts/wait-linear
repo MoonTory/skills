@@ -1,0 +1,104 @@
+#!/usr/bin/env python3
+import json
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+import waitlib
+
+URL = "https://api.linear.app/graphql"
+QUERY = """query($id: String!) {
+  issue(id: $id) {
+    identifier
+    state { name }
+    comments(first: 50) { nodes { id createdAt body user { name } } }
+  }
+}"""
+
+
+def newest_comment(issue):
+    comments = issue.get("comments") or {}
+    nodes = comments.get("nodes") or []
+    return max(nodes, key=lambda node: (str(node.get("createdAt", "")), str(node.get("id", ""))), default=None)
+
+
+def query_issue(poller, ticket, key):
+    body = json.dumps({"query": QUERY, "variables": {"id": ticket}}).encode("utf-8")
+    headers = {"Authorization": key, "Content-Type": "application/json"}
+    while True:
+        _, stdout, _ = poller.http("POST", URL, ticket, body, headers, reset_failures=False)
+        try:
+            result = json.loads(stdout)
+            errors = result.get("errors") if isinstance(result, dict) else None
+            if errors:
+                raise ValueError(json.dumps(errors, separators=(",", ":")))
+            data = result.get("data") if isinstance(result, dict) else None
+            if not isinstance(data, dict):
+                raise ValueError("Linear response has no data object")
+            poller.succeeded()
+            return data.get("issue")
+        except (json.JSONDecodeError, ValueError, TypeError) as error:
+            poller.failure(str(error))
+
+
+def main():
+    script = waitlib.Script("wait-linear", timeout=86400, interval=60)
+    script.parser.add_argument("--ticket", required=True)
+    script.parser.add_argument("--until", choices=("any", "comment", "state"), default="any")
+    script.parser.add_argument("--state")
+    args = script.parse()
+    script.target = f"ticket:{args.ticket}"
+
+    key = os.environ.get("LINEAR_API_KEY")
+    if not key:
+        script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": "LINEAR_API_KEY is not set"})
+
+    poller = waitlib.Poller(script, waitlib.Runner(args.fixture))
+    baseline = query_issue(poller, args.ticket, key)
+    if baseline is None:
+        script.fail(waitlib.EXIT_GONE, "not-found", {})
+
+    baseline_state = str((baseline.get("state") or {}).get("name", ""))
+    baseline_comment = newest_comment(baseline)
+    baseline_comment_id = str(baseline_comment.get("id", "")) if baseline_comment else ""
+    baseline_comment_at = str(baseline_comment.get("createdAt", "")) if baseline_comment else ""
+    if args.timeout == 0:
+        script.emit("baseline", {"state": baseline_state, "comment_id": baseline_comment_id})
+        return 0
+
+    while True:
+        remaining = poller.deadline - script.clock.now()
+        if remaining <= 0:
+            script.fail(waitlib.EXIT_TIMEOUT, "timeout", {})
+        delay = min(args.interval, remaining)
+        script.clock.sleep(delay)
+        if delay >= remaining:
+            script.fail(waitlib.EXIT_TIMEOUT, "timeout", {})
+
+        issue = query_issue(poller, args.ticket, key)
+        if issue is None:
+            script.fail(waitlib.EXIT_GONE, "not-found", {})
+
+        comment = newest_comment(issue)
+        comment_id = str(comment.get("id", "")) if comment else ""
+        comment_at = str(comment.get("createdAt", "")) if comment else ""
+        is_new_comment = comment_id != baseline_comment_id and comment_at > baseline_comment_at
+        if args.until in ("any", "comment") and comment and is_new_comment:
+            body = str(comment.get("body", ""))
+            user = comment.get("user") or {}
+            script.emit("comment", {
+                "author": str(user.get("name", "")),
+                "first_line": body.splitlines()[0] if body.splitlines() else "",
+                "id": comment_id,
+            })
+            return 0
+
+        state = str((issue.get("state") or {}).get("name", ""))
+        state_matches = not args.state or state == args.state
+        if args.until in ("any", "state") and state != baseline_state and state_matches:
+            script.emit("state", {"from": baseline_state, "to": state})
+            return 0
+
+
+if __name__ == "__main__":
+    main()

@@ -14,6 +14,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Any, NoReturn
@@ -108,6 +109,28 @@ class Runner:
             return completed.returncode, completed.stdout, completed.stderr
         except (OSError, subprocess.TimeoutExpired) as error:
             return 127, "", str(error)
+
+    def http(
+        self,
+        method: str,
+        url: str,
+        label: str,
+        body: bytes,
+        headers: dict[str, str],
+        timeout: float = 30,
+    ) -> tuple[int, str, str]:
+        command = [method, url, label]
+        if self.is_fixture:
+            response = self._next(command)
+            return int(response.get("exit", 0)), str(response.get("stdout", "")), str(response.get("stderr", ""))
+        request = urllib.request.Request(url, data=body, headers=headers, method=method)
+        try:
+            with urllib.request.urlopen(request, timeout=timeout) as response:
+                return 0, response.read().decode("utf-8"), ""
+        except urllib.error.HTTPError as error:
+            return error.code or 1, "", f"HTTP {error.code} {error.reason}"
+        except (OSError, urllib.error.URLError) as error:
+            return 1, "", str(error)
 
     def start(self, argv: list[str]) -> subprocess.Popen[str] | FixtureProcess:
         if self.is_fixture:
@@ -240,6 +263,26 @@ class Poller:
                 return code, stdout, stderr
             self.failure(stderr)
 
+    def http(
+        self,
+        method: str,
+        url: str,
+        label: str,
+        body: bytes,
+        headers: dict[str, str],
+        timeout: float = 30,
+        reset_failures: bool = True,
+    ) -> tuple[int, str, str]:
+        command = [method, url, label]
+        while True:
+            self.progress(shlex.join(command))
+            code, stdout, stderr = self.runner.http(method, url, label, body, headers, timeout)
+            if code == 0:
+                if reset_failures:
+                    self.succeeded()
+                return code, stdout, stderr
+            self.failure(stderr or f"HTTP request exited {code}")
+
     def start(self, argv: list[str]) -> subprocess.Popen[str] | FixtureProcess:
         self.progress(shlex.join(argv))
         return self.runner.start(argv)
@@ -304,6 +347,11 @@ def wait_for_output(
                     detail["matched_line"] = line
                 return 0, detail, ""
     return 1, {}, "timed out"
+
+
+def wake_queue_path() -> Path:
+    session = os.environ.get("CLAUDE_SESSION_ID") or str(os.getppid())
+    return Path(os.environ.get("TMPDIR") or tempfile.gettempdir()) / "agent-scripts" / "wakes" / f"{session}.tsv"
 
 
 def launch_log(brief: str | None, row: dict[str, Any]) -> None:
