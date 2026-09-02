@@ -1,0 +1,54 @@
+#!/usr/bin/env python3
+import os
+import sys
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+import waitlib
+
+
+def agent_info(stdout: str) -> dict:
+    result = waitlib.json_result(stdout)
+    if not isinstance(result, dict):
+        raise ValueError("herdr agent get returned no object")
+    return result.get("pane", result.get("agent", result))
+
+
+def main() -> int:
+    script = waitlib.Script("wait-agent", timeout=1800)
+    script.parser.add_argument("--pane", required=True)
+    script.parser.add_argument("--claude", action="store_true")
+    script.parser.add_argument("--marker", default="deviations")
+    args = script.parse()
+    script.target = f"pane:{args.pane}"
+    runner = waitlib.Runner(args.fixture)
+    poller = waitlib.Poller(script, runner)
+    timeout_ms = str(int(args.timeout * 1000))
+    if args.claude:
+        code, _, stderr = waitlib.wait_for_output(
+            script, poller, args.pane, regex=f"(?i){args.marker}",
+            source="recent-unwrapped", timeout=args.timeout,
+        )
+    else:
+        command = ["herdr", "agent", "wait", args.pane, "--timeout", timeout_ms]
+        code, _, stderr = poller.run(command, timeout=max(args.timeout + 5, 5))
+    if code != 0:
+        if waitlib.gone_error(stderr):
+            script.fail(waitlib.EXIT_GONE, "gone", {"error": stderr.strip()})
+        if code == 1:
+            script.fail(waitlib.EXIT_TIMEOUT, "timeout", {})
+        script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": stderr.strip()})
+    code, stdout, stderr = poller.run(["herdr", "agent", "get", args.pane])
+    if code != 0:
+        if waitlib.gone_error(stderr):
+            script.fail(waitlib.EXIT_GONE, "gone", {"error": stderr.strip()})
+        script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": stderr.strip()})
+    try:
+        info = agent_info(stdout)
+    except (ValueError, TypeError) as error:
+        script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": str(error)})
+    detail = {"status": info.get("agent_status", info.get("status")), "session": info.get("agent_session", info.get("session"))}
+    script.emit("settled", detail)
+    return 0
+
+
+if __name__ == "__main__":
+    main()

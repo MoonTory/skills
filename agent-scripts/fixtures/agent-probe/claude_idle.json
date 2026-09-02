@@ -1,0 +1,1 @@
+{"now":100,"mtimes":{"~/.claude/projects/-work/abc.jsonl":90},"files":{"~/.claude/projects/-work/abc.jsonl":[{"type":"assistant"}]},"responses":[{"cmd":"herdr agent get p1","stdout":"{\"result\":{\"agent_status\":\"idle\",\"agent_session\":{\"kind\":\"id\",\"value\":\"abc\"},\"cwd\":\"/work\"}}","stderr":"","exit":0}]}

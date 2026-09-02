@@ -1,0 +1,72 @@
+#!/usr/bin/env python3
+import os
+import sys
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+import waitlib
+
+
+def main() -> int:
+    script = waitlib.Script("wait-any", timeout=1800, interval=0.5)
+    script.parser.add_argument("--pane", action="append", required=True)
+    args = script.parse()
+    runner = waitlib.Runner(args.fixture)
+    poller = waitlib.Poller(script, runner)
+    timeout_ms = str(int(args.timeout * 1000))
+    commands = {
+        pane: ["herdr", "agent", "wait", pane, "--timeout", timeout_ms]
+        for pane in args.pane
+    }
+    processes = {pane: poller.start(command) for pane, command in commands.items()}
+    gone: set[str] = set()
+    failures: dict[str, str] = {}
+    while True:
+        poller.progress(",".join(args.pane))
+        for pane, process in processes.items():
+            if pane in gone or pane in failures:
+                continue
+            code = process.poll()
+            if code is None:
+                continue
+            _, stderr = process.communicate()
+            if code == 0:
+                poller.succeeded()
+                for other, pending in processes.items():
+                    if other != pane and pending.poll() is None:
+                        pending.terminate()
+                script.target = f"pane:{pane}"
+                script.emit("settled", {"status": "done", "pending": [f"pane:{item}" for item in args.pane if item != pane]})
+                return 0
+            if waitlib.gone_error(stderr):
+                gone.add(pane)
+            elif code == 1 and waitlib.timeout_error(stderr):
+                failures[pane] = "timeout"
+            else:
+                try:
+                    poller.failure(stderr)
+                except SystemExit:
+                    for pending in processes.values():
+                        if pending.poll() is None:
+                            pending.terminate()
+                    raise
+                processes[pane] = poller.start(commands[pane])
+        if len(gone) == len(processes):
+            script.target = ",".join(f"pane:{pane}" for pane in args.pane)
+            script.fail(waitlib.EXIT_GONE, "gone", {"panes": sorted(gone)})
+        if len(gone) + len(failures) == len(processes):
+            script.target = ",".join(f"pane:{pane}" for pane in args.pane)
+            if all(value == "timeout" for value in failures.values()) and not gone:
+                script.fail(waitlib.EXIT_TIMEOUT, "timeout", {})
+            if failures and all(value == "timeout" for value in failures.values()):
+                script.fail(waitlib.EXIT_TIMEOUT, "timeout", {"gone": sorted(gone)})
+            script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": next(value for value in failures.values() if value != "timeout")})
+        if args.timeout == 0 or script.clock.now() - script.started >= args.timeout:
+            for process in processes.values():
+                if process.poll() is None:
+                    process.terminate()
+            script.target = ",".join(f"pane:{pane}" for pane in args.pane)
+            script.fail(waitlib.EXIT_TIMEOUT, "timeout", {})
+        script.clock.sleep(0.5)
+
+
+if __name__ == "__main__":
+    main()

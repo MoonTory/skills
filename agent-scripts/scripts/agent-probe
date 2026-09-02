@@ -1,0 +1,61 @@
+#!/usr/bin/env python3
+import os
+import sys
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+import waitlib
+
+import json
+import re
+import time
+
+
+def info_from(stdout: str) -> dict:
+    result = waitlib.json_result(stdout)
+    if not isinstance(result, dict):
+        raise ValueError("herdr agent get returned no object")
+    return result.get("pane", result.get("agent", result))
+
+
+def session_path(session: dict, cwd: str) -> str:
+    kind, value = session.get("kind"), session.get("value")
+    if kind == "path":
+        return os.path.expanduser(value)
+    if kind == "id":
+        slug = re.sub(r"[^A-Za-z0-9_-]", "-", cwd)
+        return os.path.expanduser(f"~/.claude/projects/{slug}/{value}.jsonl")
+    raise ValueError("agent has no supported session")
+
+
+def main() -> int:
+    script = waitlib.Script("agent-probe", timeout=30)
+    script.parser.add_argument("--pane", required=True)
+    args = script.parse()
+    script.target = f"pane:{args.pane}"
+    runner = waitlib.Runner(args.fixture)
+    code, stdout, stderr = runner.run(["herdr", "agent", "get", args.pane])
+    if code != 0:
+        if waitlib.gone_error(stderr):
+            script.fail(waitlib.EXIT_GONE, "gone", {"error": stderr.strip()})
+        script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": stderr.strip()})
+    try:
+        info = info_from(stdout)
+        cwd = info.get("cwd", "")
+        path = session_path(info.get("agent_session", info.get("session", {})), cwd)
+        lines = [line for line in runner.text(path).splitlines() if line.strip()]
+        last = json.loads(lines[-1]) if lines else {}
+        now = float(runner.fixture.get("now", 0)) if runner.is_fixture else time.time()
+        age = max(0, int(now - runner.mtime(path)))
+    except (OSError, ValueError, TypeError, json.JSONDecodeError) as error:
+        script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": str(error)})
+    detail = {
+        "status": info.get("agent_status", info.get("status")),
+        "session_age_s": age,
+        "last_event": last.get("type"),
+        "cwd": cwd,
+    }
+    script.emit("probe", detail)
+    return 0
+
+
+if __name__ == "__main__":
+    main()

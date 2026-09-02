@@ -1,0 +1,34 @@
+#!/usr/bin/env python3
+import os
+import sys
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+import waitlib
+
+
+def main() -> int:
+    script = waitlib.Script("wait-output", timeout=60)
+    script.parser.add_argument("--pane", required=True)
+    match = script.parser.add_mutually_exclusive_group(required=True)
+    match.add_argument("--match")
+    match.add_argument("--regex")
+    script.parser.add_argument("--source", default="recent-unwrapped")
+    args = script.parse()
+    script.target = f"pane:{args.pane}"
+    runner = waitlib.Runner(args.fixture)
+    poller = waitlib.Poller(script, runner)
+    code, detail, stderr = waitlib.wait_for_output(
+        script, poller, args.pane, match=args.match, regex=args.regex,
+        source=args.source, timeout=args.timeout,
+    )
+    if code == 0:
+        script.emit("matched", detail)
+        return 0
+    if waitlib.gone_error(stderr):
+        script.fail(waitlib.EXIT_GONE, "gone", {"error": stderr.strip()})
+    if code == 1:
+        script.fail(waitlib.EXIT_TIMEOUT, "timeout", {})
+    script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": stderr.strip()})
+
+
+if __name__ == "__main__":
+    main()

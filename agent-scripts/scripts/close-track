@@ -1,0 +1,61 @@
+#!/usr/bin/env python3
+import os
+import sys
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+import waitlib
+
+
+def object_result(stdout: str) -> dict:
+    value = waitlib.json_result(stdout)
+    if not isinstance(value, dict):
+        raise ValueError("herdr returned no object")
+    return value
+
+
+def main() -> int:
+    script = waitlib.Script("close-track", timeout=30)
+    script.parser.add_argument("--tab", required=True)
+    script.parser.add_argument("--force", action="store_true")
+    args = script.parse()
+    script.target = f"tab:{args.tab}"
+    runner = waitlib.Runner(args.fixture)
+    code, stdout, stderr = runner.run(["herdr", "tab", "get", args.tab])
+    if code != 0:
+        if waitlib.gone_error(stderr):
+            script.fail(waitlib.EXIT_GONE, "gone", {"error": stderr.strip()})
+        script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": stderr.strip()})
+    try:
+        result = object_result(stdout)
+        tab = result.get("tab", result)
+        panes = tab.get("panes", result.get("panes", []))
+        workspace = tab.get("workspace_id", tab.get("workspace", result.get("workspace_id")))
+    except (ValueError, TypeError) as error:
+        script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": str(error)})
+    pane_ids = [str(pane.get("pane_id", pane.get("id"))) if isinstance(pane, dict) else str(pane) for pane in panes]
+    busy = [pane_id for pane_id, pane in zip(pane_ids, panes) if isinstance(pane, dict) and pane.get("agent_status", pane.get("status")) == "working"]
+    if busy and not args.force:
+        script.fail(waitlib.EXIT_GONE, "busy", {"panes": busy})
+    for pane in pane_ids:
+        code, _, stderr = runner.run(["herdr", "pane", "close", pane])
+        if code != 0 and not waitlib.gone_error(stderr):
+            script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": stderr.strip()})
+    command = ["herdr", "tab", "list"]
+    if workspace is not None:
+        command += ["--workspace", str(workspace)]
+    code, stdout, stderr = runner.run(command)
+    if code != 0:
+        script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": stderr.strip()})
+    try:
+        value = waitlib.json_result(stdout)
+        tabs = value.get("tabs", []) if isinstance(value, dict) else value
+        remaining = [item for item in tabs if str(item.get("tab_id", item.get("id"))) == str(args.tab)]
+    except (ValueError, TypeError) as error:
+        script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": str(error)})
+    if remaining:
+        script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": "tab still exists"})
+    script.emit("closed", {"panes": len(pane_ids)})
+    return 0
+
+
+if __name__ == "__main__":
+    main()

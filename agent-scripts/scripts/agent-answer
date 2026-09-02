@@ -1,0 +1,84 @@
+#!/usr/bin/env python3
+import os
+import sys
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+import waitlib
+
+import json
+import re
+
+
+def info_from(stdout: str) -> dict:
+    result = waitlib.json_result(stdout)
+    if not isinstance(result, dict):
+        raise ValueError("herdr agent get returned no object")
+    return result.get("pane", result.get("agent", result))
+
+
+def path_from(info: dict) -> str:
+    session = info.get("agent_session", info.get("session", {}))
+    value = session.get("value")
+    if session.get("kind") == "path":
+        return os.path.expanduser(value)
+    if session.get("kind") == "id":
+        slug = re.sub(r"[^A-Za-z0-9_-]", "-", info.get("cwd", ""))
+        return os.path.expanduser(f"~/.claude/projects/{slug}/{value}.jsonl")
+    raise ValueError("agent has no supported session")
+
+
+def assistant(entry: dict) -> tuple[str, str | None] | None:
+    message = entry.get("message", entry)
+    if message.get("role") != "assistant":
+        return None
+    content = message.get("content", entry.get("content", ""))
+    if isinstance(content, str):
+        text = content
+    elif isinstance(content, list):
+        text = "".join(part.get("text", "") for part in content if isinstance(part, dict) and part.get("type", "text") == "text")
+    else:
+        text = ""
+    stop_reason = message.get("stop_reason", message.get("stopReason"))
+    return text, stop_reason if stop_reason is not None else entry.get("stop_reason", entry.get("stopReason"))
+
+
+def main() -> int:
+    script = waitlib.Script("agent-answer", timeout=30)
+    source = script.parser.add_mutually_exclusive_group(required=True)
+    source.add_argument("--pane")
+    source.add_argument("--session")
+    args = script.parse()
+    runner = waitlib.Runner(args.fixture)
+    if args.pane:
+        script.target = f"pane:{args.pane}"
+        code, stdout, stderr = runner.run(["herdr", "agent", "get", args.pane])
+        if code != 0:
+            if waitlib.gone_error(stderr):
+                script.fail(waitlib.EXIT_GONE, "gone", {"error": stderr.strip()})
+            script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": stderr.strip()})
+        try:
+            path = path_from(info_from(stdout))
+        except (ValueError, TypeError) as error:
+            script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": str(error)})
+    else:
+        path = os.path.expanduser(args.session)
+        script.target = f"session:{path}"
+    found = None
+    try:
+        for line in runner.text(path).splitlines():
+            if line.strip():
+                candidate = assistant(json.loads(line))
+                if candidate is not None:
+                    found = candidate
+    except (OSError, ValueError, TypeError, json.JSONDecodeError) as error:
+        script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": str(error)})
+    if found is None:
+        script.fail(waitlib.EXIT_GONE, "gone", {"error": "no assistant message"})
+    text, stop_reason = found
+    print(text)
+    event = "truncated" if stop_reason == "length" else "answer"
+    script.emit(event, {"chars": len(text), "stop_reason": stop_reason})
+    return 0
+
+
+if __name__ == "__main__":
+    main()

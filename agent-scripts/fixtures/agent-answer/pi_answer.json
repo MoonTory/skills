@@ -1,0 +1,1 @@
+{"files":{"/sessions/pi.jsonl":[{"type":"message","message":{"role":"user","content":"question"}},{"type":"message","message":{"role":"assistant","content":[{"type":"text","text":"final answer"}],"stop_reason":"stop"}}]},"responses":[{"cmd":"herdr agent get p1","stdout":"{\"result\":{\"agent_session\":{\"kind\":\"path\",\"value\":\"/sessions/pi.jsonl\"}}}","stderr":"","exit":0}]}
