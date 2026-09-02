@@ -223,11 +223,17 @@ class Poller:
         self.script.progress(f"tool failure {self.failures}/5; retry in {delay:g} s: {error.strip()}")
         self.script.clock.sleep(min(delay, remaining))
 
-    def run(self, argv: list[str], timeout: float = 30) -> tuple[int, str, str]:
+    def run(
+        self,
+        argv: list[str],
+        timeout: float = 30,
+        accepted_codes: set[int] | None = None,
+    ) -> tuple[int, str, str]:
+        accepted = accepted_codes or {0}
         while True:
             self.progress(shlex.join(argv))
             code, stdout, stderr = self.runner.run(argv, timeout=timeout)
-            if code == 0:
+            if code in accepted:
                 self.succeeded()
                 return code, stdout, stderr
             if gone_error(stderr) or (code == 1 and timeout_error(stderr)):

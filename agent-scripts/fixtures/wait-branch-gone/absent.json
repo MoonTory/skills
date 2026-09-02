@@ -1,0 +1,3 @@
+{"responses":[
+  {"cmd":"git -C /repo ls-remote --heads origin topic","stdout":"","stderr":"","exit":0}
+]}

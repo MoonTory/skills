@@ -54,6 +54,9 @@ Choose markers that do not appear in the command sent to the pane so the intende
 - `agent-task` waits for startup, prompts once, and waits for settle; exits 0 settled, 2 gone, 3 timeout, or 4 prompt/tool failure.
 - `close-track` closes all safe panes in a tab; exits 0 closed, 2 busy or gone, or 4 tool failure.
 - `brief-check` checks required brief fields; exits 0 valid, 2 missing fields or file, or 4 tool failure.
+- `wait-ci` waits for PR or commit checks; exits 0 green or red, 2 closed or head changed, 3 timeout or no run, or 4 tool failure.
+- `wait-merged` waits for a PR merge; exits 0 merged, 2 closed, 3 timeout, or 4 tool failure.
+- `wait-branch-gone` waits for remote branch deletion; exits 0 gone, 2 absent, 3 timeout, or 4 tool failure.
 
 ## Tests
 

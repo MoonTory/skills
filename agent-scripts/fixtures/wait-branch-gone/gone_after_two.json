@@ -1,0 +1,5 @@
+{"responses":[
+  {"cmd":"git -C /repo ls-remote --heads origin topic","stdout":"abc123\trefs/heads/topic\n","stderr":"","exit":0},
+  {"cmd":"git -C /repo ls-remote --heads origin topic","stdout":"abc123\trefs/heads/topic\n","stderr":"","exit":0},
+  {"cmd":"git -C /repo ls-remote --heads origin topic","stdout":"","stderr":"","exit":0}
+]}

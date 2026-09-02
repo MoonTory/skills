@@ -1,0 +1,58 @@
+#!/usr/bin/env python3
+import json
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+import waitlib
+
+
+def read_pr(poller, command):
+    while True:
+        code, stdout, stderr = poller.run(command)
+        if code != 0:
+            return code, None, stderr
+        try:
+            value = json.loads(stdout)
+        except (json.JSONDecodeError, TypeError) as error:
+            poller.failure(f"invalid JSON from gh pr view: {error}")
+            continue
+        if isinstance(value, dict):
+            return code, value, stderr
+        poller.failure("gh pr view returned no object")
+
+
+def main():
+    script = waitlib.Script("wait-merged", timeout=7200, interval=30)
+    script.parser.add_argument("--pr", type=int, required=True)
+    args = script.parse()
+    script.target = f"pr:{args.pr}"
+    poller = waitlib.Poller(script, waitlib.Runner(args.fixture))
+    command = ["gh", "pr", "view", str(args.pr), "--json", "state,mergedAt,mergeCommit,headRefOid"]
+    while True:
+        code, pr, stderr = read_pr(poller, command)
+        if code != 0:
+            if waitlib.gone_error(stderr):
+                script.fail(waitlib.EXIT_GONE, "closed", {})
+            script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": stderr.strip() or f"command exited {code}"})
+        if pr.get("mergedAt"):
+            merge_commit = pr.get("mergeCommit") or {}
+            script.emit("merged", {
+                "sha": merge_commit.get("oid", ""),
+                "merged_at": pr["mergedAt"],
+                "head": pr.get("headRefOid", ""),
+            })
+            return 0
+        if str(pr.get("state", "")).upper() == "CLOSED":
+            script.fail(waitlib.EXIT_GONE, "closed", {})
+        remaining = poller.deadline - script.clock.now()
+        if args.timeout == 0 or remaining <= 0:
+            script.fail(waitlib.EXIT_TIMEOUT, "timeout", {})
+        delay = min(args.interval, remaining)
+        script.clock.sleep(delay)
+        if delay >= remaining:
+            script.fail(waitlib.EXIT_TIMEOUT, "timeout", {})
+
+
+if __name__ == "__main__":
+    main()

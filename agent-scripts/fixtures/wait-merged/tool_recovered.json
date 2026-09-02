@@ -1,0 +1,4 @@
+{"responses":[
+  {"cmd":"gh pr view 51 --json state,mergedAt,mergeCommit,headRefOid","stdout":"","stderr":"gh unavailable","exit":4},
+  {"cmd":"gh pr view 51 --json state,mergedAt,mergeCommit,headRefOid","stdout":"{\"state\":\"MERGED\",\"mergedAt\":\"2000-01-01T00:00:30Z\",\"mergeCommit\":{\"oid\":\"merge456\"},\"headRefOid\":\"head123\"}","stderr":"","exit":0}
+]}

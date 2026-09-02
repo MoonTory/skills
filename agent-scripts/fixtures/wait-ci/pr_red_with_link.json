@@ -1,0 +1,5 @@
+{"responses":[
+  {"cmd":"gh pr view 51 --json headRefOid,state,mergedAt","stdout":"{\"headRefOid\":\"bad123\",\"state\":\"OPEN\",\"mergedAt\":null}","stderr":"","exit":0},
+  {"cmd":"gh pr checks 51 --json name,state,bucket,link,workflow","stdout":"[{\"name\":\"browser\",\"state\":\"FAILURE\",\"bucket\":\"fail\",\"link\":\"/actions/runs/43/job/11\",\"workflow\":\"CI\"}]","stderr":"","exit":1},
+  {"cmd":"gh api 'repos/{owner}/{repo}/actions/jobs/11/logs'","stdout":"browser failed\n","stderr":"","exit":0}
+]}
