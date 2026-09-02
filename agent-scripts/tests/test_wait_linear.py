@@ -67,8 +67,13 @@ class WaitLinearTests(unittest.TestCase):
         self.assertEqual(output["event"], "tool-failure")
         self.assertIn("LINEAR_API_KEY", output["detail"]["error"])
 
-    def test_not_found(self):
+    def test_not_found_error(self):
         result = run("not_found")
+        self.assertEqual(result.returncode, 2)
+        self.assertEqual(json.loads(result.stdout)["event"], "not-found")
+
+    def test_not_found_null(self):
+        result = run("not_found_null")
         self.assertEqual(result.returncode, 2)
         self.assertEqual(json.loads(result.stdout)["event"], "not-found")
 

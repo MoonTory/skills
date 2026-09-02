@@ -221,7 +221,7 @@ herdr agent prompt "$NEW_PANE" "review the test coverage in src/api/ and report 
 
 `pane run` already sends Enter. do not send an extra Enter during the normal flow; it can submit an empty prompt or open a menu after an error. if the `working` confirmation times out, inspect `pane get` and `pane read` immediately. the prompt may still be in the editor because startup raced, or pi may be showing an authentication/configuration error. only send Enter after confirming that the intended prompt is visibly waiting in the editor.
 
-then detect completion with the settle loop in "waiting for an agent to finish". after the agent responds, send every clarification or follow-up to the **same pane**. leave the interactive process open until likely follow-ups are complete.
+then detect completion with `herdr agent wait "$PANE" --timeout 1800000` as shown in "waiting for an agent to finish". after the agent responds, send every clarification or follow-up to the **same pane**. leave the interactive process open until likely follow-ups are complete.
 
 ## spawn another supported agent
 
@@ -279,7 +279,7 @@ herdr agent wait "$PANE" --timeout 1800000
 interpret the settled status:
 
 - `done` / `idle` → read the pane and continue the conversation
-- `blocked` → the agent is asking for input: read the pane, answer with `agent prompt … --wait --until working`, and restart the loop
+- `blocked` → the agent is asking for input: read the pane, answer with `agent prompt … --wait --until working`, and run `herdr agent wait "$PANE" --timeout 1800000` again
 
 ## send text or keys to a pane
 
@@ -404,21 +404,21 @@ herdr agent prompt "$NEW_PANE" "review the test coverage in src/api/" --wait --u
 
 ### follow up with the same agent
 
-wait for the agent to settle using the background loop from "waiting for an agent to finish" (never a single long `wait --status done`), then keep the conversation in the same pane instead of spawning a new agent:
+wait with `herdr agent wait "$PANE" --timeout 1800000` as shown in "waiting for an agent to finish", then keep the conversation in the same pane instead of spawning a new agent:
 
 ```bash
-# (settle loop from "waiting for an agent to finish" has exited)
+# (`herdr agent wait "$PANE" --timeout 1800000` has returned)
 herdr pane read "$NEW_PANE" --source recent-unwrapped --lines 100
 herdr agent prompt "$NEW_PANE" "also check the integration tests in tests/api/" --wait --until working --timeout 20000
-# then start the settle loop again in the background
+# then run `herdr agent wait "$PANE" --timeout 1800000` again
 ```
 
 ### coordinate with another agent
 
-run the settle loop from "waiting for an agent to finish" in the background, then read the pane once it exits:
+run `herdr agent wait "$PANE" --timeout 1800000` as shown in "waiting for an agent to finish", then read the pane once it returns:
 
 ```bash
-# settle loop exited with "settled: done" (or idle/blocked)
+# `herdr agent wait "$PANE" --timeout 1800000` returned done (or idle/blocked)
 herdr pane read 1-1 --source recent --lines 100
 ```
 

@@ -1,0 +1,3 @@
+{"responses":[
+  {"cmd":"POST https://api.linear.app/graphql ADM-140","stdout":"{\"data\":{\"issue\":null}}","stderr":"","exit":0}
+]}
