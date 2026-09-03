@@ -1,0 +1,1 @@
+{"files":{"/claude.jsonl":[{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"claude answer"}],"stop_reason":"stop"}}]},"responses":[]}

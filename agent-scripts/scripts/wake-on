@@ -1,0 +1,29 @@
+#!/usr/bin/env python3
+import argparse
+import os
+import shlex
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+import waitlib
+
+
+def main():
+    script = waitlib.Script("wake-on", timeout=0, interval=0)
+    script.parser.add_argument("queued_script")
+    script.parser.add_argument("queued_args", nargs=argparse.REMAINDER)
+    args = script.parse()
+    command = [args.queued_script, *args.queued_args]
+    rendered = shlex.join(command)
+    script.target = rendered
+
+    path = waitlib.wake_queue_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(f"{script.clock.timestamp()}\t{rendered}\n")
+    script.emit("queued", {"command": rendered})
+    return 0
+
+
+if __name__ == "__main__":
+    main()

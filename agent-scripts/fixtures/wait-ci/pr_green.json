@@ -1,0 +1,6 @@
+{"responses":[
+  {"cmd":"gh pr view 51 --json headRefOid,state,mergedAt","stdout":"{\"headRefOid\":\"abc123\",\"state\":\"OPEN\",\"mergedAt\":null}","stderr":"","exit":0},
+  {"cmd":"gh pr checks 51 --json name,state,bucket,link,workflow","stdout":"[{\"name\":\"changes\",\"state\":\"IN_PROGRESS\",\"bucket\":\"pending\",\"link\":\"/actions/runs/42/job/8\",\"workflow\":\"CI\"}]","stderr":"","exit":8},
+  {"cmd":"gh pr view 51 --json headRefOid,state,mergedAt","stdout":"{\"headRefOid\":\"abc123\",\"state\":\"OPEN\",\"mergedAt\":null}","stderr":"","exit":0},
+  {"cmd":"gh pr checks 51 --json name,state,bucket,link,workflow","stdout":"[{\"name\":\"changes\",\"state\":\"SUCCESS\",\"bucket\":\"pass\",\"link\":\"/actions/runs/42/job/8\",\"workflow\":\"CI\"},{\"name\":\"unit-shard\",\"state\":\"SKIPPED\",\"bucket\":\"skipping\",\"link\":\"/actions/runs/42/job/10\",\"workflow\":\"CI\"}]","stderr":"","exit":0}
+]}

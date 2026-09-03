@@ -1,0 +1,1 @@
+{"responses":[{"cmd":"herdr pane read p1 --source recent-unwrapped","stdout":"shell","stderr":"","exit":0},{"cmd":"herdr pane wait-output p1 --match MARK --source recent-unwrapped --timeout 60000","stdout":"","stderr":"timed out","exit":1}]}

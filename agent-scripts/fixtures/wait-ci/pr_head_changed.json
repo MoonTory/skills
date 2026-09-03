@@ -1,0 +1,5 @@
+{"responses":[
+  {"cmd":"gh pr view 51 --json headRefOid,state,mergedAt","stdout":"{\"headRefOid\":\"old123\",\"state\":\"OPEN\",\"mergedAt\":null}","stderr":"","exit":0},
+  {"cmd":"gh pr checks 51 --json name,state,bucket,link,workflow","stdout":"[{\"name\":\"unit\",\"state\":\"IN_PROGRESS\",\"bucket\":\"pending\",\"link\":\"/actions/runs/44/job/12\",\"workflow\":\"CI\"}]","stderr":"","exit":8},
+  {"cmd":"gh pr view 51 --json headRefOid,state,mergedAt","stdout":"{\"headRefOid\":\"new456\",\"state\":\"OPEN\",\"mergedAt\":null}","stderr":"","exit":0}
+]}

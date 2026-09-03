@@ -1,0 +1,4 @@
+{"responses":[
+  {"cmd":"gh run list --commit abc123 --workflow ci.yml --json databaseId,status,conclusion,event,createdAt","stdout":"[]","stderr":"","exit":0},
+  {"cmd":"gh run list --commit abc123 --workflow ci.yml --json databaseId,status,conclusion,event,createdAt","stdout":"[]","stderr":"","exit":0}
+]}

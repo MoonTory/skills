@@ -1,0 +1,4 @@
+{"responses":[
+  {"cmd":"gh pr view 51 --json state,mergedAt,mergeCommit,headRefOid","stdout":"{\"state\":\"OPEN\",\"mergedAt\":null,\"mergeCommit\":null,\"headRefOid\":\"head123\"}","stderr":"","exit":0},
+  {"cmd":"gh pr view 51 --json state,mergedAt,mergeCommit,headRefOid","stdout":"{\"state\":\"CLOSED\",\"mergedAt\":null,\"mergeCommit\":null,\"headRefOid\":\"head123\"}","stderr":"","exit":0}
+]}

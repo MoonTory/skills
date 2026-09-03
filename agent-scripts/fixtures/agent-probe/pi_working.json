@@ -1,0 +1,1 @@
+{"now":100,"mtimes":{"/sessions/pi.jsonl":59},"files":{"/sessions/pi.jsonl":[{"type":"session"},{"type":"tool_result"}]},"responses":[{"cmd":"herdr agent get p1","stdout":"{\"result\":{\"agent_status\":\"working\",\"agent_session\":{\"kind\":\"path\",\"value\":\"/sessions/pi.jsonl\"},\"cwd\":\"/work\"}}","stderr":"","exit":0}]}

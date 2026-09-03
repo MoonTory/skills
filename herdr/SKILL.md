@@ -193,7 +193,8 @@ when pi exposes `--skill-profile`, start a terminal worker with `--no-skills --s
 remain visible. match the terminal role to the profile: Explorer → `explore`, Planner → `plan`, Builder → `build`,
 Reviewer → `review`. an active workflow may define a more specific profile, such as a Linear-bound variant. the skill
 profile selects instructions only; keep model choice, tool limits, and any identity-bearing MCP profile as separate
-launch controls.
+launch controls. `--tools <list>` is an allowlist and removes every MCP tool as well; a role that must keep an MCP
+server uses `--exclude-tools <list>` instead.
 
 always specify codex models with the full `openai-codex/` provider prefix. a bare model such as `gpt-5.6-sol` can resolve to another provider and fail with a misleading missing-api-key error. available codex model ids are:
 
@@ -220,7 +221,7 @@ herdr agent prompt "$NEW_PANE" "review the test coverage in src/api/ and report 
 
 `pane run` already sends Enter. do not send an extra Enter during the normal flow; it can submit an empty prompt or open a menu after an error. if the `working` confirmation times out, inspect `pane get` and `pane read` immediately. the prompt may still be in the editor because startup raced, or pi may be showing an authentication/configuration error. only send Enter after confirming that the intended prompt is visibly waiting in the editor.
 
-then detect completion with the settle loop in "waiting for an agent to finish". after the agent responds, send every clarification or follow-up to the **same pane**. leave the interactive process open until likely follow-ups are complete.
+then detect completion with `herdr agent wait "$PANE" --timeout 1800000` as shown in "waiting for an agent to finish". after the agent responds, send every clarification or follow-up to the **same pane**. leave the interactive process open until likely follow-ups are complete.
 
 ## spawn another supported agent
 
@@ -269,25 +270,16 @@ use this when you want the same `done` / `idle` distinction the UI shows.
 
 do not pin a single long wait on `--status done`. `done` is transient — it means "finished and not yet viewed", and it flips to `idle` once the pane is looked at — and a `blocked` agent (asking you a question) never reaches `done` at all. a lone `wait --status done --timeout 600000` can therefore sit for the full timeout while the agent finished or blocked long ago.
 
-instead, detect that the agent has **left `working`**. combine short chunked waits on `done` (instant when it fires) with `pane get` polls that also catch `idle` and `blocked`:
+without `--until`, `agent wait` returns on `idle`, `done`, or `blocked`, so no chunked loop is needed; `~/.agents/skills/agent-scripts/scripts/wait-agent` wraps this and reports the final status as JSON.
 
 ```bash
-# after confirming the agent is working
-DEADLINE=$(( $(date +%s) + 1800 ))
-while [ "$(date +%s)" -lt "$DEADLINE" ]; do
-  st=$(herdr pane get "$PANE" | python3 -c 'import sys,json;print(json.load(sys.stdin)["result"]["pane"]["agent_status"])')
-  [ "$st" != "working" ] && { echo "settled: $st"; exit 0; }
-  herdr agent wait "$PANE" --until done --timeout 15000 >/dev/null 2>&1 && { echo "settled: done"; exit 0; }
-done
-echo timeout; exit 1
+herdr agent wait "$PANE" --timeout 1800000
 ```
-
-a `done` transition settles instantly via the wait; `idle` and `blocked` are caught within one 15s chunk. run this loop in the background when the current harness supports background commands. otherwise use short chunks and return to other work between checks; do not issue one long blocking wait.
 
 interpret the settled status:
 
 - `done` / `idle` → read the pane and continue the conversation
-- `blocked` → the agent is asking for input: read the pane, answer with `pane run`, confirm it is `working` again, and restart the loop
+- `blocked` → the agent is asking for input: read the pane, answer with `agent prompt … --wait --until working`, and run `herdr agent wait "$PANE" --timeout 1800000` again
 
 ## send text or keys to a pane
 
@@ -407,28 +399,26 @@ NEW_PANE=$(herdr pane split 1-2 --direction down --no-focus | python3 -c 'import
 herdr pane run "$NEW_PANE" "pi --no-skills --skill-profile review --model openai-codex/gpt-5.6-terra --tools read,grep,find,ls"
 herdr pane wait-output "$NEW_PANE" --match "Pi can explain its own features" --timeout 15000
 herdr agent wait "$NEW_PANE" --until idle --timeout 10000
-herdr pane run "$NEW_PANE" "review the test coverage in src/api/"
-herdr agent wait "$NEW_PANE" --until working --timeout 10000
+herdr agent prompt "$NEW_PANE" "review the test coverage in src/api/" --wait --until working --timeout 20000
 ```
 
 ### follow up with the same agent
 
-wait for the agent to settle using the background loop from "waiting for an agent to finish" (never a single long `wait --status done`), then keep the conversation in the same pane instead of spawning a new agent:
+wait with `herdr agent wait "$PANE" --timeout 1800000` as shown in "waiting for an agent to finish", then keep the conversation in the same pane instead of spawning a new agent:
 
 ```bash
-# (settle loop from "waiting for an agent to finish" has exited)
+# (`herdr agent wait "$PANE" --timeout 1800000` has returned)
 herdr pane read "$NEW_PANE" --source recent-unwrapped --lines 100
-herdr pane run "$NEW_PANE" "also check the integration tests in tests/api/"
-herdr agent wait "$NEW_PANE" --until working --timeout 10000
-# then start the settle loop again in the background
+herdr agent prompt "$NEW_PANE" "also check the integration tests in tests/api/" --wait --until working --timeout 20000
+# then run `herdr agent wait "$PANE" --timeout 1800000` again
 ```
 
 ### coordinate with another agent
 
-run the settle loop from "waiting for an agent to finish" in the background, then read the pane once it exits:
+run `herdr agent wait "$PANE" --timeout 1800000` as shown in "waiting for an agent to finish", then read the pane once it returns:
 
 ```bash
-# settle loop exited with "settled: done" (or idle/blocked)
+# `herdr agent wait "$PANE" --timeout 1800000` returned done (or idle/blocked)
 herdr pane read 1-1 --source recent --lines 100
 ```
 

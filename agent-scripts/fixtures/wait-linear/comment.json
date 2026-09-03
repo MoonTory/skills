@@ -1,0 +1,4 @@
+{"responses":[
+  {"cmd":"POST https://api.linear.app/graphql ADM-140","stdout":"{\"data\":{\"issue\":{\"identifier\":\"ADM-140\",\"state\":{\"name\":\"Needs Input\"},\"comments\":{\"nodes\":[{\"id\":\"old-comment\",\"createdAt\":\"2026-01-01T10:00:00Z\",\"body\":\"Earlier note\",\"user\":{\"name\":\"Reviewer\"}}]}}}}","stderr":"","exit":0},
+  {"cmd":"POST https://api.linear.app/graphql ADM-140","stdout":"{\"data\":{\"issue\":{\"identifier\":\"ADM-140\",\"state\":{\"name\":\"Needs Input\"},\"comments\":{\"nodes\":[{\"id\":\"old-comment\",\"createdAt\":\"2026-01-01T10:00:00Z\",\"body\":\"Earlier note\",\"user\":{\"name\":\"Reviewer\"}},{\"id\":\"new-comment\",\"createdAt\":\"2026-01-01T11:00:00Z\",\"body\":\"Owner decision: use option A.\\nDetails follow.\",\"user\":{\"name\":\"Gustavo Quinta\"}}]}}}}","stderr":"","exit":0}
+]}

@@ -1,0 +1,219 @@
+#!/usr/bin/env python3
+import json
+import os
+import re
+import sys
+import tempfile
+from pathlib import Path
+
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+import waitlib
+
+
+def json_command(poller, argv, *, accepted_codes=None):
+    while True:
+        code, stdout, stderr = poller.run(argv, accepted_codes=accepted_codes)
+        if code not in (accepted_codes or {0}):
+            return code, None, stderr
+        try:
+            return code, json.loads(stdout), stderr
+        except (json.JSONDecodeError, TypeError) as error:
+            poller.failure(f"invalid JSON from {' '.join(argv)}: {error}")
+
+
+def stop_for_command(script, code, stderr):
+    if waitlib.gone_error(stderr):
+        script.fail(waitlib.EXIT_GONE, "closed", {})
+    script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": stderr.strip() or f"command exited {code}"})
+
+
+def pause(script, poller, seconds):
+    remaining = poller.deadline - script.clock.now()
+    if script.args.timeout == 0 or remaining <= 0:
+        script.fail(waitlib.EXIT_TIMEOUT, "timeout", {})
+    delay = min(seconds, remaining)
+    script.clock.sleep(delay)
+    if delay >= remaining:
+        script.fail(waitlib.EXIT_TIMEOUT, "timeout", {})
+
+
+def run_id_from_link(link):
+    match = re.search(r"/actions/runs/(\d+)", str(link or ""))
+    return int(match.group(1)) if match else None
+
+
+def job_id_from_link(link):
+    match = re.search(r"/job/(\d+)", str(link or ""))
+    return match.group(1) if match else None
+
+
+def save_log(script, poller, run_id, job_id):
+    command = ["gh", "api", f"repos/{{owner}}/{{repo}}/actions/jobs/{job_id}/logs"]
+    code, stdout, stderr = poller.run(command)
+    if code != 0:
+        stop_for_command(script, code, stderr)
+    directory = Path(os.environ.get("TMPDIR", tempfile.gettempdir())) / "agent-scripts"
+    path = directory / f"{run_id or 'unknown'}-{job_id}.log"
+    try:
+        directory.mkdir(parents=True, exist_ok=True)
+        path.write_text(stdout, encoding="utf-8")
+    except OSError as error:
+        script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": str(error)})
+    return str(path)
+
+
+def check_rows(rows):
+    if not isinstance(rows, list):
+        raise ValueError("gh returned no check list")
+    return [{"name": str(row.get("name", "")), "bucket": str(row.get("bucket", ""))} for row in rows]
+
+
+def finish_checks(script, poller, rows, head, logs):
+    jobs = check_rows(rows)
+    run_id = next((run_id_from_link(row.get("link")) for row in rows if run_id_from_link(row.get("link")) is not None), None)
+    failed = []
+    for row in rows:
+        if row.get("bucket") in ("fail", "cancel"):
+            failed.append({"name": str(row.get("name", "")), "link": str(row.get("link", ""))})
+    if failed:
+        if logs:
+            first_row = next(row for row in rows if row.get("bucket") in ("fail", "cancel"))
+            job_id = job_id_from_link(first_row.get("link"))
+            if job_id:
+                failed[0]["log"] = save_log(script, poller, run_id, job_id)
+        script.emit("red", {"failed": failed})
+        return 0
+    script.emit("green", {"head": head, "run_id": run_id, "jobs": jobs})
+    return 0
+
+
+def pr_mode(script, poller, number, logs):
+    view_command = ["gh", "pr", "view", str(number), "--json", "headRefOid,state,mergedAt"]
+    checks_command = ["gh", "pr", "checks", str(number), "--json", "name,state,bucket,link,workflow"]
+    original_head = None
+    while True:
+        code, view, stderr = json_command(poller, view_command)
+        if code != 0:
+            stop_for_command(script, code, stderr)
+        if not isinstance(view, dict):
+            poller.failure("gh pr view returned no object")
+            continue
+        head = str(view.get("headRefOid", ""))
+        if original_head is None:
+            original_head = head
+        elif head != original_head:
+            script.fail(waitlib.EXIT_GONE, "head-changed", {"was": original_head, "now": head})
+        closed = bool(view.get("mergedAt")) or str(view.get("state", "")).upper() != "OPEN"
+        code, rows, stderr = json_command(poller, checks_command, accepted_codes={0, 1, 8})
+        if code not in {0, 1, 8}:
+            stop_for_command(script, code, stderr)
+        try:
+            jobs = check_rows(rows)
+        except (ValueError, TypeError) as error:
+            poller.failure(str(error))
+            continue
+        if not any(job["bucket"] == "pending" for job in jobs):
+            return finish_checks(script, poller, rows, original_head, logs)
+        if closed:
+            script.fail(waitlib.EXIT_GONE, "closed", {})
+        pause(script, poller, script.args.interval)
+
+
+def bucket_for_job(job):
+    conclusion = str(job.get("conclusion") or "").lower()
+    status = str(job.get("status") or "").lower()
+    if conclusion == "success":
+        return "pass"
+    if conclusion == "skipped":
+        return "skipping"
+    if conclusion in {"failure", "cancelled", "timed_out", "action_required", "stale"}:
+        return "fail"
+    if status != "completed":
+        return "pending"
+    return "pass"
+
+
+def commit_result(script, poller, commit, run_id, run, logs):
+    raw_jobs = run.get("jobs", [])
+    if not isinstance(raw_jobs, list):
+        raw_jobs = []
+    jobs = [{"name": str(job.get("name", "")), "bucket": bucket_for_job(job)} for job in raw_jobs]
+    failed_rows = [job for job in raw_jobs if bucket_for_job(job) == "fail"]
+    run_failed = str(run.get("conclusion") or "").lower() not in {"success", "neutral", "skipped"}
+    if failed_rows or run_failed:
+        failed = [
+            {"name": str(job.get("name", "")), "link": str(job.get("url", job.get("link", "")))}
+            for job in failed_rows
+        ]
+        if not failed:
+            failed = [{"name": "run", "link": ""}]
+        if logs and failed_rows and failed_rows[0].get("databaseId") is not None:
+            failed[0]["log"] = save_log(script, poller, run_id, str(failed_rows[0]["databaseId"]))
+        script.emit("red", {"failed": failed})
+        return 0
+    script.emit("green", {"head": commit, "run_id": run_id, "jobs": jobs})
+    return 0
+
+
+def commit_mode(script, poller, commit, appear_timeout, logs):
+    list_command = [
+        "gh", "run", "list", "--commit", commit, "--workflow", "ci.yml", "--json",
+        "databaseId,status,conclusion,event,createdAt",
+    ]
+    appear_deadline = script.clock.now() + max(0, appear_timeout)
+    run_id = None
+    while run_id is None:
+        code, runs, stderr = json_command(poller, list_command)
+        if code != 0:
+            stop_for_command(script, code, stderr)
+        if not isinstance(runs, list):
+            poller.failure("gh run list returned no list")
+            continue
+        if runs:
+            run_id = runs[0].get("databaseId")
+            if run_id is None:
+                poller.failure("gh run list returned a run without databaseId")
+                continue
+            break
+        if script.args.timeout == 0 or script.clock.now() >= appear_deadline:
+            script.fail(waitlib.EXIT_TIMEOUT, "no-run", {})
+        overall_remaining = poller.deadline - script.clock.now()
+        appear_remaining = appear_deadline - script.clock.now()
+        if overall_remaining <= 0:
+            script.fail(waitlib.EXIT_TIMEOUT, "timeout", {})
+        delay = min(15, overall_remaining, appear_remaining)
+        script.clock.sleep(delay)
+        if delay >= appear_remaining:
+            script.fail(waitlib.EXIT_TIMEOUT, "no-run", {})
+        if delay >= overall_remaining:
+            script.fail(waitlib.EXIT_TIMEOUT, "timeout", {})
+    view_command = ["gh", "run", "view", str(run_id), "--json", "status,conclusion,jobs"]
+    while True:
+        code, run, stderr = json_command(poller, view_command)
+        if code != 0:
+            stop_for_command(script, code, stderr)
+        if not isinstance(run, dict):
+            poller.failure("gh run view returned no object")
+            continue
+        if str(run.get("status", "")).lower() == "completed":
+            return commit_result(script, poller, commit, run_id, run, logs)
+        pause(script, poller, script.args.interval)
+
+
+def main():
+    script = waitlib.Script("wait-ci", timeout=1500, interval=20)
+    target = script.parser.add_mutually_exclusive_group(required=True)
+    target.add_argument("--pr", type=int)
+    target.add_argument("--commit")
+    script.parser.add_argument("--appear-timeout", type=float, default=300)
+    script.parser.add_argument("--logs", action="store_true")
+    args = script.parse()
+    script.target = f"pr:{args.pr}" if args.pr is not None else f"commit:{args.commit}"
+    poller = waitlib.Poller(script, waitlib.Runner(args.fixture))
+    if args.pr is not None:
+        return pr_mode(script, poller, args.pr, args.logs)
+    return commit_mode(script, poller, args.commit, args.appear_timeout, args.logs)
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,38 @@
+#!/usr/bin/env python3
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+import waitlib
+
+
+def main():
+    script = waitlib.Script("wait-branch-gone", timeout=3600, interval=30)
+    script.parser.add_argument("--branch", required=True)
+    script.parser.add_argument("--repo", default=os.getcwd())
+    args = script.parse()
+    script.target = f"branch:{args.branch}"
+    poller = waitlib.Poller(script, waitlib.Runner(args.fixture))
+    command = ["git", "-C", args.repo, "ls-remote", "--heads", "origin", args.branch]
+    first = True
+    while True:
+        code, stdout, stderr = poller.run(command)
+        if code != 0:
+            script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": stderr.strip() or f"command exited {code}"})
+        if not stdout.strip():
+            if first:
+                script.fail(waitlib.EXIT_GONE, "absent", {})
+            script.emit("gone", {})
+            return 0
+        first = False
+        remaining = poller.deadline - script.clock.now()
+        if args.timeout == 0 or remaining <= 0:
+            script.fail(waitlib.EXIT_TIMEOUT, "timeout", {})
+        delay = min(args.interval, remaining)
+        script.clock.sleep(delay)
+        if delay >= remaining:
+            script.fail(waitlib.EXIT_TIMEOUT, "timeout", {})
+
+
+if __name__ == "__main__":
+    main()

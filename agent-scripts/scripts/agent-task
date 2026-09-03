@@ -1,0 +1,107 @@
+#!/usr/bin/env python3
+import os
+import sys
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+import waitlib
+
+
+def info_from(stdout: str) -> dict:
+    result = waitlib.json_result(stdout)
+    if not isinstance(result, dict):
+        raise ValueError("herdr agent get returned no object")
+    return result.get("pane", result.get("agent", result))
+
+
+def main() -> int:
+    script = waitlib.Script("agent-task", timeout=1800)
+    script.parser.add_argument("--pane", required=True)
+    script.parser.add_argument("--line")
+    script.parser.add_argument("--claude", action="store_true")
+    script.parser.add_argument("--marker", default="? for shortcuts")
+    script.parser.add_argument("--no-startup", action="store_true")
+    args = script.parse()
+    script.target = f"pane:{args.pane}"
+    if bool(args.brief) == bool(args.line):
+        script.fail(waitlib.EXIT_GONE, "missing", {"error": "use exactly one of --brief or --line"})
+    line = f"Read your brief in full and follow it: {args.brief}" if args.brief else args.line
+    runner = waitlib.Runner(args.fixture)
+    poller = waitlib.Poller(script, runner)
+
+    if not args.no_startup:
+        marker = args.marker if args.claude else "Pi can explain its own features"
+        code, _, stderr = waitlib.wait_for_output(
+            script, poller, args.pane, match=marker,
+            source="recent-unwrapped", timeout=15,
+        )
+        if code != 0:
+            if waitlib.gone_error(stderr):
+                script.fail(waitlib.EXIT_GONE, "gone", {"error": stderr.strip()})
+            if code == 1:
+                script.fail(waitlib.EXIT_TIMEOUT, "timeout", {"stage": "startup"})
+            script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": stderr.strip()})
+
+    code, _, stderr = poller.run(["herdr", "agent", "wait", args.pane, "--until", "idle", "--timeout", "10000"], timeout=15)
+    if code != 0:
+        if waitlib.gone_error(stderr):
+            script.fail(waitlib.EXIT_GONE, "gone", {"error": stderr.strip()})
+        if code == 1:
+            script.fail(waitlib.EXIT_TIMEOUT, "timeout", {"stage": "idle"})
+        script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": stderr.strip()})
+    script.clock.sleep(2)
+
+    prompt = ["herdr", "agent", "prompt", args.pane, line, "--wait", "--until", "working", "--timeout", "20000"]
+    code, _, stderr = runner.run(prompt, timeout=25)
+    if code != 0 and "agent_not_found" in stderr.lower():
+        script.clock.sleep(2)
+        code, _, stderr = runner.run(prompt, timeout=25)
+    if code != 0:
+        read_code, screen, read_error = runner.run(["herdr", "pane", "read", args.pane, "--source", "recent", "--lines", "20"])
+        if read_code != 0:
+            screen = read_error
+        script.fail(waitlib.EXIT_TOOL, "prompt-failed", {"screen": screen.rstrip()})
+    prompted_at = script.clock.timestamp()
+    if args.timeout != 0:
+        claude_baseline = None
+        if args.claude:
+            code, claude_baseline, stderr = waitlib.pane_lines(poller, args.pane)
+            if code != 0:
+                if waitlib.gone_error(stderr):
+                    script.fail(waitlib.EXIT_GONE, "gone", {"error": stderr.strip()})
+                script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": stderr.strip()})
+
+        timeout_ms = str(int(args.timeout * 1000))
+        if args.claude:
+            code, _, stderr = waitlib.wait_for_output(
+                script, poller, args.pane, regex="(?i)deviations",
+                source="recent-unwrapped", timeout=args.timeout,
+                baseline=claude_baseline,
+            )
+        else:
+            settle = ["herdr", "agent", "wait", args.pane, "--timeout", timeout_ms]
+            code, _, stderr = poller.run(settle, timeout=max(args.timeout + 5, 5))
+        if code != 0:
+            if waitlib.gone_error(stderr):
+                script.fail(waitlib.EXIT_GONE, "gone", {"error": stderr.strip()})
+            if code == 1:
+                script.fail(waitlib.EXIT_TIMEOUT, "timeout", {})
+            script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": stderr.strip()})
+    code, stdout, stderr = poller.run(["herdr", "agent", "get", args.pane])
+    if code != 0:
+        if waitlib.gone_error(stderr):
+            script.fail(waitlib.EXIT_GONE, "gone", {"error": stderr.strip()})
+        script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": stderr.strip()})
+    try:
+        info = info_from(stdout)
+    except (ValueError, TypeError) as error:
+        script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": str(error)})
+    detail = {
+        "status": info.get("agent_status", info.get("status")),
+        "session": info.get("agent_session", info.get("session")),
+        "prompted_at": prompted_at,
+    }
+    script.emit("settled", detail)
+    return 0
+
+
+if __name__ == "__main__":
+    main()
