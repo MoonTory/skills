@@ -48,6 +48,9 @@ Choose markers that do not appear in the command sent to the pane so the intende
 
 - `wait-output` waits for pane text; exits 0 matched, 2 pane gone, 3 timeout, or 4 tool failure.
 - `wait-agent` waits for an agent to leave working; exits 0 settled, 2 pane gone, 3 timeout, or 4 tool failure.
+  With `--claude` the status still decides: once the agent leaves working it polls the screen for `--marker`
+  (default `deviations`) until the deadline to confirm the report, so a marker echoed with the brief while the
+  agent works never settles the wait, and a missing marker reports a timeout with `marker` false.
 - `wait-any` waits for the first of several agents; exits 0 settled, 2 all panes gone, 3 timeout, or 4 tool failure.
 - `agent-probe` reports state and session activity without prompting; exits 0 probe, 2 pane gone, or 4 tool failure.
 - `agent-answer` prints the last assistant reply; exits 0 answer or truncated, 2 no reply or pane, or 4 tool failure.

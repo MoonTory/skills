@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os
+import re
 import sys
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 import waitlib
@@ -12,6 +13,51 @@ def agent_info(stdout: str) -> dict:
     return result.get("pane", result.get("agent", result))
 
 
+def fetch_info(script: waitlib.Script, poller: waitlib.Poller, pane: str) -> dict:
+    code, stdout, stderr = poller.run(["herdr", "agent", "get", pane])
+    if code != 0:
+        if waitlib.gone_error(stderr):
+            script.fail(waitlib.EXIT_GONE, "gone", {"error": stderr.strip()})
+        script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": stderr.strip()})
+    try:
+        return agent_info(stdout)
+    except (ValueError, TypeError) as error:
+        script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": str(error)})
+
+
+def leave_working(script: waitlib.Script, poller: waitlib.Poller, pane: str, timeout: float, interval: float) -> None:
+    command = ["herdr", "agent", "wait", pane, "--timeout", str(int(timeout * 1000))]
+    code, _, stderr = poller.run(command, timeout=max(timeout + 5, 5))
+    # Herdr can still be registering a freshly launched agent, so retry that one error inside the timeout.
+    while code != 0 and "agent_not_found" in stderr.lower() and script.clock.now() < poller.deadline:
+        script.clock.sleep(interval)
+        code, _, stderr = poller.run(command, timeout=max(timeout + 5, 5))
+    if code == 0:
+        return
+    if waitlib.gone_error(stderr):
+        script.fail(waitlib.EXIT_GONE, "gone", {"error": stderr.strip()})
+    if code == 1:
+        script.fail(waitlib.EXIT_TIMEOUT, "timeout", {})
+    script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": stderr.strip()})
+
+
+def confirm_marker(script: waitlib.Script, poller: waitlib.Poller, pane: str, marker: str, interval: float) -> bool:
+    # The status says the turn ended; the marker only confirms the report reached the screen.
+    pattern = re.compile(f"(?i){marker}")
+    while True:
+        code, lines, stderr = waitlib.pane_lines(poller, pane)
+        if code != 0:
+            if waitlib.gone_error(stderr):
+                script.fail(waitlib.EXIT_GONE, "gone", {"error": stderr.strip()})
+            script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": stderr.strip()})
+        if any(pattern.search(line) for line in lines):
+            return True
+        remaining = poller.deadline - script.clock.now()
+        if remaining <= 0:
+            return False
+        script.clock.sleep(min(interval, remaining))
+
+
 def main() -> int:
     script = waitlib.Script("wait-agent", timeout=1800)
     script.parser.add_argument("--pane", required=True)
@@ -21,31 +67,14 @@ def main() -> int:
     script.target = f"pane:{args.pane}"
     runner = waitlib.Runner(args.fixture)
     poller = waitlib.Poller(script, runner)
-    timeout_ms = str(int(args.timeout * 1000))
-    if args.claude:
-        code, _, stderr = waitlib.wait_for_output(
-            script, poller, args.pane, regex=f"(?i){args.marker}",
-            source="recent-unwrapped", timeout=args.timeout,
-        )
-    else:
-        command = ["herdr", "agent", "wait", args.pane, "--timeout", timeout_ms]
-        code, _, stderr = poller.run(command, timeout=max(args.timeout + 5, 5))
-    if code != 0:
-        if waitlib.gone_error(stderr):
-            script.fail(waitlib.EXIT_GONE, "gone", {"error": stderr.strip()})
-        if code == 1:
-            script.fail(waitlib.EXIT_TIMEOUT, "timeout", {})
-        script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": stderr.strip()})
-    code, stdout, stderr = poller.run(["herdr", "agent", "get", args.pane])
-    if code != 0:
-        if waitlib.gone_error(stderr):
-            script.fail(waitlib.EXIT_GONE, "gone", {"error": stderr.strip()})
-        script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": stderr.strip()})
-    try:
-        info = agent_info(stdout)
-    except (ValueError, TypeError) as error:
-        script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": str(error)})
-    detail = {"status": info.get("agent_status", info.get("status")), "session": info.get("agent_session", info.get("session"))}
+    leave_working(script, poller, args.pane, args.timeout, args.interval)
+    info = fetch_info(script, poller, args.pane)
+    status = info.get("agent_status", info.get("status"))
+    detail = {"status": status, "session": info.get("agent_session", info.get("session"))}
+    if args.claude and status in {"idle", "done"}:
+        detail["marker"] = confirm_marker(script, poller, args.pane, args.marker, args.interval)
+        if not detail["marker"]:
+            script.fail(waitlib.EXIT_TIMEOUT, "timeout", {"marker": False, "status": status})
     script.emit("settled", detail)
     return 0
 
