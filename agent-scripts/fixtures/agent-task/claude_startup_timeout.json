@@ -1,0 +1,1 @@
+{"responses": [{"cmd": "herdr pane wait-output p1 --regex '❯|auto mode on|accept edits on' --source recent-unwrapped --timeout 45000", "stdout": "", "stderr": "timeout", "exit": 1}]}

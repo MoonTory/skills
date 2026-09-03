@@ -51,7 +51,7 @@ Choose markers that do not appear in the command sent to the pane so the intende
 - `wait-any` waits for the first of several agents; exits 0 settled, 2 all panes gone, 3 timeout, or 4 tool failure.
 - `agent-probe` reports state and session activity without prompting; exits 0 probe, 2 pane gone, or 4 tool failure.
 - `agent-answer` prints the last assistant reply; exits 0 answer or truncated, 2 no reply or pane, or 4 tool failure.
-- `agent-task` waits for startup, prompts once, and waits for settle; `--timeout 0` returns after the prompt with the current status; exits 0 settled, 2 gone or blocked, 3 timeout, or 4 prompt/tool failure.
+- `agent-task` waits for startup (pi banner, or for `--claude` the `❯` prompt line or the `auto mode on` / `accept edits on` footer; ceiling `--timeout` capped at 60 s, 30 s when `--timeout 0`), prompts once, and waits for settle; `--timeout 0` returns after the prompt with the current status; exits 0 settled, 2 gone or blocked, 3 timeout, or 4 prompt/tool failure.
 - `close-track` closes all safe panes in a tab; exits 0 closed, 2 busy or gone, or 4 tool failure.
 - `brief-check` checks required brief fields; exits 0 valid, 2 missing fields or file, or 4 tool failure.
 - `wait-ci` waits for PR or commit checks; exits 0 green or red, 2 closed or head changed, 3 timeout or no run, or 4 tool failure.
