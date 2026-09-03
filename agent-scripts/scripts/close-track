@@ -25,14 +25,20 @@ def main() -> int:
             script.fail(waitlib.EXIT_GONE, "gone", {"error": stderr.strip()})
         script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": stderr.strip()})
     try:
-        result = object_result(stdout)
-        tab = result.get("tab", result)
-        panes = tab.get("panes", result.get("panes", []))
-        workspace = tab.get("workspace_id", tab.get("workspace", result.get("workspace_id")))
+        tab = object_result(stdout).get("tab", {})
+        workspace = tab.get("workspace_id")
     except (ValueError, TypeError) as error:
         script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": str(error)})
-    pane_ids = [str(pane.get("pane_id", pane.get("id"))) if isinstance(pane, dict) else str(pane) for pane in panes]
-    busy = [pane_id for pane_id, pane in zip(pane_ids, panes) if isinstance(pane, dict) and pane.get("agent_status", pane.get("status")) == "working"]
+    # `herdr tab get` reports only a pane count; the pane ids come from `pane list`.
+    code, stdout, stderr = runner.run(["herdr", "pane", "list"])
+    if code != 0:
+        script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": stderr.strip()})
+    try:
+        panes = [pane for pane in object_result(stdout).get("panes", []) if str(pane.get("tab_id")) == str(args.tab)]
+    except (ValueError, TypeError, AttributeError) as error:
+        script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": str(error)})
+    pane_ids = [str(pane.get("pane_id")) for pane in panes]
+    busy = [pane_id for pane_id, pane in zip(pane_ids, panes) if pane.get("agent_status") == "working"]
     if busy and not args.force:
         script.fail(waitlib.EXIT_GONE, "busy", {"panes": busy})
     for pane in pane_ids:
@@ -46,10 +52,9 @@ def main() -> int:
     if code != 0:
         script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": stderr.strip()})
     try:
-        value = waitlib.json_result(stdout)
-        tabs = value.get("tabs", []) if isinstance(value, dict) else value
-        remaining = [item for item in tabs if str(item.get("tab_id", item.get("id"))) == str(args.tab)]
-    except (ValueError, TypeError) as error:
+        tabs = object_result(stdout).get("tabs", [])
+        remaining = [item for item in tabs if str(item.get("tab_id")) == str(args.tab)]
+    except (ValueError, TypeError, AttributeError) as error:
         script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": str(error)})
     if remaining:
         script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": "tab still exists"})
