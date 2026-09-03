@@ -1,0 +1,16 @@
+{
+  "responses": [
+    {
+      "cmd": "gh pr view 57 --json state,mergedAt,mergeCommit,reviewDecision,reviews,url -R acme/widgets",
+      "stdout": "{\"state\":\"OPEN\",\"mergedAt\":null,\"reviewDecision\":\"REVIEW_REQUIRED\",\"reviews\":[{\"id\":\"r-old\",\"author\":{\"login\":\"alice\"},\"state\":\"COMMENTED\",\"submittedAt\":\"2000-01-01T00:00:00Z\"}],\"url\":\"https://github.com/acme/widgets/pull/57\"}",
+      "stderr": "",
+      "exit": 0
+    },
+    {
+      "cmd": "gh api graphql -f 'query=query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewThreads(first:100){nodes{id isResolved isOutdated comments(first:1){nodes{author{login} body path line url}}}}}}}' -F owner=acme -F name=widgets -F number=57",
+      "stdout": "{\"data\":{\"repository\":{\"pullRequest\":{\"reviewThreads\":{\"nodes\":[{\"id\":\"t-old\",\"isResolved\":false,\"isOutdated\":false,\"comments\":{\"nodes\":[{\"author\":{\"login\":\"alice\"},\"body\":\"Old thread\",\"path\":\"old.py\",\"line\":3,\"url\":\"https://github.com/acme/widgets/pull/57#discussion-old\"}]}},{\"id\":\"t-reopen\",\"isResolved\":true,\"isOutdated\":false,\"comments\":{\"nodes\":[{\"author\":{\"login\":\"bob\"},\"body\":\"Resolved thread\",\"path\":\"done.py\",\"line\":9,\"url\":\"https://github.com/acme/widgets/pull/57#discussion-reopen\"}]}}]}}}}}",
+      "stderr": "",
+      "exit": 0
+    }
+  ]
+}

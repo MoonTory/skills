@@ -1,0 +1,28 @@
+{
+  "responses": [
+    {
+      "cmd": "gh pr view 57 --json state,mergedAt,mergeCommit,reviewDecision,reviews,url -R acme/widgets",
+      "stdout": "{\"state\":\"OPEN\",\"mergedAt\":null,\"reviewDecision\":\"REVIEW_REQUIRED\",\"reviews\":[],\"url\":\"https://github.com/acme/widgets/pull/57\"}",
+      "stderr": "",
+      "exit": 0
+    },
+    {
+      "cmd": "gh api graphql -f 'query=query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewThreads(first:100){nodes{id isResolved isOutdated comments(first:1){nodes{author{login} body path line url}}}}}}}' -F owner=acme -F name=widgets -F number=57",
+      "stdout": "{\"data\":{\"repository\":{\"pullRequest\":{\"reviewThreads\":{\"nodes\":[]}}}}}",
+      "stderr": "",
+      "exit": 0
+    },
+    {
+      "cmd": "gh pr view 57 --json state,mergedAt,mergeCommit,reviewDecision,reviews,url -R acme/widgets",
+      "stdout": "{\"state\":\"CLOSED\",\"mergedAt\":null,\"reviewDecision\":\"\",\"reviews\":[],\"url\":\"https://github.com/acme/widgets/pull/57\"}",
+      "stderr": "",
+      "exit": 0
+    },
+    {
+      "cmd": "gh api graphql -f 'query=query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewThreads(first:100){nodes{id isResolved isOutdated comments(first:1){nodes{author{login} body path line url}}}}}}}' -F owner=acme -F name=widgets -F number=57",
+      "stdout": "{\"data\":{\"repository\":{\"pullRequest\":{\"reviewThreads\":{\"nodes\":[]}}}}}",
+      "stderr": "",
+      "exit": 0
+    }
+  ]
+}

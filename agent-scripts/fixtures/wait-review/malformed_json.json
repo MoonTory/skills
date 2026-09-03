@@ -1,0 +1,40 @@
+{
+  "responses": [
+    {
+      "cmd": "gh pr view 57 --json state,mergedAt,mergeCommit,reviewDecision,reviews,url -R acme/widgets",
+      "stdout": "not json",
+      "stderr": "",
+      "exit": 0
+    },
+    {
+      "cmd": "gh pr view 57 --json state,mergedAt,mergeCommit,reviewDecision,reviews,url -R acme/widgets",
+      "stdout": "not json",
+      "stderr": "",
+      "exit": 0
+    },
+    {
+      "cmd": "gh pr view 57 --json state,mergedAt,mergeCommit,reviewDecision,reviews,url -R acme/widgets",
+      "stdout": "not json",
+      "stderr": "",
+      "exit": 0
+    },
+    {
+      "cmd": "gh pr view 57 --json state,mergedAt,mergeCommit,reviewDecision,reviews,url -R acme/widgets",
+      "stdout": "not json",
+      "stderr": "",
+      "exit": 0
+    },
+    {
+      "cmd": "gh pr view 57 --json state,mergedAt,mergeCommit,reviewDecision,reviews,url -R acme/widgets",
+      "stdout": "not json",
+      "stderr": "",
+      "exit": 0
+    },
+    {
+      "cmd": "gh pr view 57 --json state,mergedAt,mergeCommit,reviewDecision,reviews,url -R acme/widgets",
+      "stdout": "not json",
+      "stderr": "",
+      "exit": 0
+    }
+  ]
+}

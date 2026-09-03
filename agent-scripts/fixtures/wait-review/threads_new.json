@@ -1,0 +1,28 @@
+{
+  "responses": [
+    {
+      "cmd": "gh pr view 57 --json state,mergedAt,mergeCommit,reviewDecision,reviews,url -R acme/widgets",
+      "stdout": "{\"state\":\"OPEN\",\"mergedAt\":null,\"reviewDecision\":\"REVIEW_REQUIRED\",\"reviews\":[],\"url\":\"https://github.com/acme/widgets/pull/57\"}",
+      "stderr": "",
+      "exit": 0
+    },
+    {
+      "cmd": "gh api graphql -f 'query=query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewThreads(first:100){nodes{id isResolved isOutdated comments(first:1){nodes{author{login} body path line url}}}}}}}' -F owner=acme -F name=widgets -F number=57",
+      "stdout": "{\"data\":{\"repository\":{\"pullRequest\":{\"reviewThreads\":{\"nodes\":[]}}}}}",
+      "stderr": "",
+      "exit": 0
+    },
+    {
+      "cmd": "gh pr view 57 --json state,mergedAt,mergeCommit,reviewDecision,reviews,url -R acme/widgets",
+      "stdout": "{\"state\":\"OPEN\",\"mergedAt\":null,\"reviewDecision\":\"REVIEW_REQUIRED\",\"reviews\":[],\"url\":\"https://github.com/acme/widgets/pull/57\"}",
+      "stderr": "",
+      "exit": 0
+    },
+    {
+      "cmd": "gh api graphql -f 'query=query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewThreads(first:100){nodes{id isResolved isOutdated comments(first:1){nodes{author{login} body path line url}}}}}}}' -F owner=acme -F name=widgets -F number=57",
+      "stdout": "{\"data\":{\"repository\":{\"pullRequest\":{\"reviewThreads\":{\"nodes\":[{\"id\":\"t-gustavo\",\"isResolved\":false,\"isOutdated\":false,\"comments\":{\"nodes\":[{\"author\":{\"login\":\"gustavo\"},\"body\":\"Please rename this.\",\"path\":\"src/main.py\",\"line\":42,\"url\":\"https://github.com/acme/widgets/pull/57#discussion-1\"}]}},{\"id\":\"t-copilot\",\"isResolved\":false,\"isOutdated\":false,\"comments\":{\"nodes\":[{\"author\":{\"login\":\"copilot-pull-request-reviewer[bot]\"},\"body\":\"Handle the empty case.\",\"path\":\"src/util.py\",\"line\":null,\"url\":\"https://github.com/acme/widgets/pull/57#discussion-2\"}]}}]}}}}}",
+      "stderr": "",
+      "exit": 0
+    }
+  ]
+}
