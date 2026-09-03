@@ -43,7 +43,29 @@ class WaitAgentTests(unittest.TestCase):
     def test_claude_marker(self):
         result = run("claude_marker", "--claude")
         self.assertEqual(result.returncode, 0)
-        self.assertEqual(json.loads(result.stdout)["detail"]["session"]["kind"], "id")
+        envelope = json.loads(result.stdout)
+        self.assertEqual(envelope["detail"]["session"]["kind"], "id")
+        self.assertIs(envelope["detail"]["marker"], True)
+        self.assertEqual(envelope["elapsed_s"], 0)
+
+    def test_claude_marker_echoed_while_working(self):
+        result = run("claude_marker_echoed", "--claude")
+        self.assertEqual(result.returncode, 3)
+        self.assertEqual(json.loads(result.stdout)["event"], "timeout")
+
+    def test_claude_marker_after_status_flips(self):
+        result = run("claude_marker_late", "--claude")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        envelope = json.loads(result.stdout)
+        self.assertIs(envelope["detail"]["marker"], True)
+        self.assertEqual(envelope["elapsed_s"], 2)
+
+    def test_claude_marker_never_arrives(self):
+        result = run("claude_marker_missing", "--claude", "--timeout", "4", "--interval", "2")
+        self.assertEqual(result.returncode, 3)
+        envelope = json.loads(result.stdout)
+        self.assertEqual(envelope["event"], "timeout")
+        self.assertEqual(envelope["detail"], {"marker": False, "status": "done"})
 
     def test_tool_failure_recovers(self):
         result = run("tool_recovered")
