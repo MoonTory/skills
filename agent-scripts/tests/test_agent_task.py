@@ -80,6 +80,31 @@ class AgentTaskTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(json.loads(result.stdout)["elapsed_s"], 4)
 
+    def test_claude_startup_matches_prompt_line_or_mode_footer(self):
+        result = run("claude_startup", "--claude", "--timeout", "0")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        fixture = json.loads((FIXTURES / "claude_startup.json").read_text())
+        self.assertNotIn("? for shortcuts", fixture["responses"][0]["stdout"])
+        self.assertIn("prompted_at", json.loads(result.stdout)["detail"])
+
+    def test_claude_startup_waits_out_transient_blocked_and_unknown(self):
+        result = run("claude_startup_blocked_then_idle", "--claude", "--timeout", "0")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("prompted_at", json.loads(result.stdout)["detail"])
+
+    def test_claude_startup_regex_covers_each_ready_form(self):
+        import re
+        pattern = re.compile(runpy.run_path(str(SCRIPT))["CLAUDE_READY"])
+        for text in ("❯ ", "⏵⏵ auto mode on (shift+tab to cycle)", "⏵⏵ accept edits on"):
+            self.assertTrue(pattern.search(text), text)
+        self.assertFalse(pattern.search("? for shortcuts"))
+
+    def test_claude_startup_timeout_uses_timeout_ceiling(self):
+        result = run("claude_startup_timeout", "--claude", "--timeout", "45")
+        self.assertEqual(result.returncode, 3)
+        self.assertEqual(json.loads(result.stdout)["detail"]["stage"], "startup")
+        # the fixture only answers the exact 45 s wait, so any other ceiling misses it
+
     def test_claude_marker_ignores_prompt_echo(self):
         result = run("claude_marker", "--no-startup", "--claude", line="end with Deviations")
         self.assertEqual(result.returncode, 0, result.stderr)

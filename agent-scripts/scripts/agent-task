@@ -5,6 +5,9 @@ sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 import waitlib
 
 
+CLAUDE_READY = "❯|auto mode on|accept edits on"
+
+
 def info_from(stdout: str) -> dict:
     result = waitlib.json_result(stdout)
     if not isinstance(result, dict):
@@ -20,7 +23,7 @@ def main() -> int:
     script.parser.add_argument("--pane", required=True)
     script.parser.add_argument("--line")
     script.parser.add_argument("--claude", action="store_true")
-    script.parser.add_argument("--marker", default="? for shortcuts")
+    script.parser.add_argument("--marker")
     script.parser.add_argument("--no-startup", action="store_true")
     args = script.parse()
     script.target = f"pane:{args.pane}"
@@ -31,10 +34,17 @@ def main() -> int:
     poller = waitlib.Poller(script, runner)
 
     if not args.no_startup:
-        marker = args.marker if args.claude else "Pi can explain its own features"
+        # Claude Code prints no fixed banner; ready is the prompt line or the permission-mode footer.
+        # The startup ceiling follows --timeout, capped at 60 s; --timeout 0 keeps a 30 s ceiling.
+        startup_timeout = min(args.timeout, 60) if args.timeout > 0 else 30
+        if args.marker:
+            expect = {"match": args.marker}
+        elif args.claude:
+            expect = {"regex": CLAUDE_READY}
+        else:
+            expect = {"match": "Pi can explain its own features"}
         code, _, stderr = waitlib.wait_for_output(
-            script, poller, args.pane, match=marker,
-            source="recent-unwrapped", timeout=15,
+            script, poller, args.pane, source="recent-unwrapped", timeout=startup_timeout, baseline=[], **expect,
         )
         if code != 0:
             if waitlib.gone_error(stderr):
@@ -43,7 +53,13 @@ def main() -> int:
                 script.fail(waitlib.EXIT_TIMEOUT, "timeout", {"stage": "startup"})
             script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": stderr.strip()})
 
-    code, _, stderr = poller.run(["herdr", "agent", "wait", args.pane, "--timeout", "10000"], timeout=15)
+    settle = ["herdr", "agent", "wait", args.pane, "--timeout", "10000"]
+    code, _, stderr = poller.run(settle, timeout=15)
+    # herdr registers a fresh agent a moment after its prompt line shows; at startup that is not "gone".
+    startup_deadline = script.started + startup_timeout if not args.no_startup else script.clock.now()
+    while code != 0 and "agent_not_found" in stderr.lower() and script.clock.now() < startup_deadline:
+        script.clock.sleep(2)
+        code, _, stderr = poller.run(settle, timeout=15)
     if code != 0:
         if waitlib.gone_error(stderr):
             script.fail(waitlib.EXIT_GONE, "gone", {"error": stderr.strip()})
@@ -51,15 +67,20 @@ def main() -> int:
             script.fail(waitlib.EXIT_TIMEOUT, "timeout", {"stage": "settle"})
         script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": stderr.strip()})
 
-    code, stdout, stderr = poller.run(["herdr", "agent", "get", args.pane])
-    if code != 0:
-        if waitlib.gone_error(stderr):
-            script.fail(waitlib.EXIT_GONE, "gone", {"error": stderr.strip()})
-        script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": stderr.strip()})
-    try:
-        status = info_from(stdout).get("agent_status")
-    except (ValueError, TypeError) as error:
-        script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": str(error)})
+    while True:
+        code, stdout, stderr = poller.run(["herdr", "agent", "get", args.pane])
+        if code != 0:
+            if waitlib.gone_error(stderr):
+                script.fail(waitlib.EXIT_GONE, "gone", {"error": stderr.strip()})
+            script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": stderr.strip()})
+        try:
+            status = info_from(stdout).get("agent_status")
+        except (ValueError, TypeError) as error:
+            script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": str(error)})
+        # During startup herdr can report blocked or unknown for a few seconds before the agent settles.
+        if status in {"idle", "done"} or script.clock.now() >= startup_deadline:
+            break
+        script.clock.sleep(2)
     if status == "blocked":
         script.fail(waitlib.EXIT_GONE, "blocked", {"status": status})
     if status not in {"idle", "done"}:
