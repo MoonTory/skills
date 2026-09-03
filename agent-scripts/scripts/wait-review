@@ -1,0 +1,227 @@
+#!/usr/bin/env python3
+import json
+import os
+import sys
+from pathlib import Path
+from urllib.parse import urlparse
+
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+import waitlib
+
+QUERY = "query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewThreads(first:100){nodes{id isResolved isOutdated comments(first:1){nodes{author{login} body path line url}}}}}}}"
+
+
+def read_object(poller, command, label):
+    while True:
+        prior_failures = poller.failures
+        code, stdout, stderr = poller.run(command)
+        if code != 0:
+            return code, None, stderr
+        try:
+            value = json.loads(stdout)
+        except (json.JSONDecodeError, TypeError) as error:
+            poller.failures = prior_failures
+            poller.failure(f"invalid JSON from {label}: {error}")
+            continue
+        if isinstance(value, dict):
+            return code, value, stderr
+        poller.failures = prior_failures
+        poller.failure(f"{label} returned no object")
+
+
+def repository_from_url(poller, url):
+    while True:
+        parsed = urlparse(str(url))
+        parts = parsed.path.strip("/").split("/")
+        if parsed.netloc.lower() == "github.com" and len(parts) >= 4 and parts[2] == "pull":
+            return parts[0], parts[1]
+        poller.failure("gh pr view returned an invalid PR URL")
+
+
+def read_poll(poller, pr_number, repo):
+    view_command = [
+        "gh", "pr", "view", str(pr_number), "--json",
+        "state,mergedAt,mergeCommit,reviewDecision,reviews,url",
+    ]
+    if repo:
+        view_command += ["-R", repo]
+    code, pr, stderr = read_object(poller, view_command, "gh pr view")
+    if code != 0:
+        return code, None, None, stderr
+
+    owner, name = repository_from_url(poller, pr.get("url", ""))
+    thread_command = [
+        "gh", "api", "graphql", "-f", f"query={QUERY}",
+        "-F", f"owner={owner}", "-F", f"name={name}", "-F", f"number={pr_number}",
+    ]
+    # `gh api` has no -R flag; the repository comes from the query variables.
+    while True:
+        prior_failures = poller.failures
+        code, result, stderr = read_object(poller, thread_command, "gh api graphql")
+        if code != 0:
+            return code, None, None, stderr
+        try:
+            threads = result["data"]["repository"]["pullRequest"]["reviewThreads"]["nodes"]
+            if not isinstance(threads, list):
+                raise TypeError("reviewThreads.nodes is not a list")
+        except (KeyError, TypeError) as error:
+            poller.failures = prior_failures
+            poller.failure(f"invalid review threads response: {error}")
+            continue
+        return 0, pr, threads, stderr
+
+
+def make_baseline(pr, threads):
+    reviews = pr.get("reviews") or []
+    return {
+        "threads": {
+            str(thread.get("id", "")): bool(thread.get("isResolved"))
+            for thread in threads if isinstance(thread, dict)
+        },
+        "reviews": [
+            str(review.get("id", "")) for review in reviews if isinstance(review, dict)
+        ],
+        "review_decision": str(pr.get("reviewDecision") or ""),
+    }
+
+
+def baseline_detail(baseline):
+    return {
+        "threads": sum(not resolved for resolved in baseline["threads"].values()),
+        "reviews": len(baseline["reviews"]),
+        "review_decision": baseline["review_decision"],
+    }
+
+
+def review_detail(review, decision):
+    author = review.get("author") or {}
+    return {
+        "review_id": str(review.get("id", "")),
+        "author": str(author.get("login", "")) if isinstance(author, dict) else "",
+        "review_decision": decision,
+    }
+
+
+def matching_review(reviews, baseline_ids, state):
+    matching = [review for review in reviews if str(review.get("state", "")).upper() == state]
+    return next(
+        (review for review in matching if str(review.get("id", "")) not in baseline_ids),
+        matching[-1] if matching else {},
+    )
+
+
+def event_for(pr, threads, baseline):
+    decision = str(pr.get("reviewDecision") or "").upper()
+    baseline_threads = baseline["threads"]
+    new_threads = []
+    for thread in threads:
+        if not isinstance(thread, dict) or bool(thread.get("isResolved")):
+            continue
+        thread_id = str(thread.get("id", ""))
+        if thread_id in baseline_threads and not baseline_threads[thread_id]:
+            continue
+        comments = thread.get("comments") or {}
+        nodes = (comments.get("nodes") or []) if isinstance(comments, dict) else []
+        comment = nodes[0] if nodes and isinstance(nodes[0], dict) else {}
+        author = comment.get("author") or {}
+        new_threads.append({
+            "id": thread_id,
+            "author": str(author.get("login", "")) if isinstance(author, dict) else "",
+            "path": str(comment.get("path", "")),
+            "line": comment.get("line"),
+            "body": str(comment.get("body", "")),
+            "url": str(comment.get("url", "")),
+        })
+    if new_threads:
+        return "threads", {"threads": new_threads, "review_decision": decision}
+
+    reviews = [review for review in (pr.get("reviews") or []) if isinstance(review, dict)]
+    baseline_ids = set(baseline["reviews"])
+    for state, event in (("CHANGES_REQUESTED", "changes_requested"), ("APPROVED", "approved")):
+        review = matching_review(reviews, baseline_ids, state)
+        is_new = bool(review) and str(review.get("id", "")) not in baseline_ids
+        decision_changed = decision == state and baseline["review_decision"].upper() != state
+        if is_new or decision_changed:
+            return event, review_detail(review, decision)
+    return None
+
+
+def load_baseline(script, path):
+    try:
+        with path.open(encoding="utf-8") as handle:
+            baseline = json.load(handle)
+        threads = baseline["threads"]
+        reviews = baseline["reviews"]
+        decision = baseline.get("review_decision", "")
+        if not isinstance(threads, dict) or not isinstance(reviews, list):
+            raise TypeError("baseline has invalid threads or reviews")
+        return {
+            "threads": {str(key): bool(value) for key, value in threads.items()},
+            "reviews": [str(value) for value in reviews],
+            "review_decision": str(decision),
+        }
+    except (OSError, json.JSONDecodeError, KeyError, TypeError) as error:
+        script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": f"could not read baseline: {error}"})
+
+
+def main():
+    script = waitlib.Script("wait-review", timeout=7200, interval=30)
+    script.parser.add_argument("--pr", type=int, required=True)
+    script.parser.add_argument("--repo")
+    script.parser.add_argument("--baseline")
+    args = script.parse()
+    script.target = f"pr:{args.pr}"
+    poller = waitlib.Poller(script, waitlib.Runner(args.fixture))
+
+    baseline_path = Path(args.baseline) if args.baseline else None
+    baseline = load_baseline(script, baseline_path) if baseline_path and baseline_path.exists() else None
+
+    while True:
+        code, pr, threads, stderr = read_poll(poller, args.pr, args.repo)
+        if code != 0:
+            if waitlib.gone_error(stderr):
+                script.fail(waitlib.EXIT_GONE, "closed", {})
+            script.fail(waitlib.EXIT_TOOL, "tool-failure", {
+                "error": stderr.strip() or f"command exited {code}",
+            })
+
+        if baseline is None:
+            baseline = make_baseline(pr, threads)
+            if baseline_path:
+                try:
+                    baseline_path.parent.mkdir(parents=True, exist_ok=True)
+                    with baseline_path.open("w", encoding="utf-8") as handle:
+                        json.dump(baseline, handle, sort_keys=True)
+                        handle.write("\n")
+                except OSError as error:
+                    script.fail(waitlib.EXIT_TOOL, "tool-failure", {
+                        "error": f"could not write baseline: {error}",
+                    })
+
+        if pr.get("mergedAt"):
+            merge_commit = pr.get("mergeCommit") or {}
+            sha = str(merge_commit.get("oid", "")) if isinstance(merge_commit, dict) else ""
+            script.fail(waitlib.EXIT_GONE, "merged", {"sha": sha})
+        if str(pr.get("state", "")).upper() == "CLOSED":
+            script.fail(waitlib.EXIT_GONE, "closed", {})
+
+        if args.timeout == 0:
+            script.emit("baseline", baseline_detail(baseline))
+            return 0
+
+        event = event_for(pr, threads, baseline)
+        if event:
+            script.emit(*event)
+            return 0
+
+        remaining = poller.deadline - script.clock.now()
+        if remaining <= 0:
+            script.fail(waitlib.EXIT_TIMEOUT, "timeout", {})
+        delay = min(args.interval, remaining)
+        script.clock.sleep(delay)
+        if delay >= remaining:
+            script.fail(waitlib.EXIT_TIMEOUT, "timeout", {})
+
+
+if __name__ == "__main__":
+    main()
