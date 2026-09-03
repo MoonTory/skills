@@ -41,6 +41,23 @@ class AgentTaskTests(unittest.TestCase):
         self.assertEqual(envelope["event"], "settled")
         self.assertEqual(envelope["detail"]["status"], "working")
 
+    def test_done_agent_is_prompted_once(self):
+        result = run("status_done", "--no-startup", "--timeout", "0")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout)["detail"]["status"], "working")
+        fixture = json.loads((FIXTURES / "status_done.json").read_text())
+        prompts = [response for response in fixture["responses"] if response["cmd"].startswith("herdr agent prompt")]
+        self.assertEqual(len(prompts), 1)
+
+    def test_blocked_agent_is_not_prompted(self):
+        result = run("status_blocked", "--no-startup")
+        self.assertEqual(result.returncode, 2, result.stderr)
+        envelope = json.loads(result.stdout)
+        self.assertEqual(envelope["event"], "blocked")
+        self.assertEqual(envelope["detail"]["status"], "blocked")
+        fixture = json.loads((FIXTURES / "status_blocked.json").read_text())
+        self.assertFalse(any(response["cmd"].startswith("herdr agent prompt") for response in fixture["responses"]))
+
     def test_prompt_retry(self):
         result = run("prompt_retry", "--no-startup")
         self.assertEqual(result.returncode, 0, result.stderr)
