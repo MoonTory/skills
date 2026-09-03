@@ -1,0 +1,1 @@
+{"responses":[{"cmd":"herdr agent wait p1 --timeout 10000","stdout":"{}","stderr":"","exit":0},{"cmd":"herdr agent get p1","stdout":"{\"result\":{\"agent_status\":\"blocked\"}}","stderr":"","exit":0}]}

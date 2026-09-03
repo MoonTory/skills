@@ -9,7 +9,10 @@ def info_from(stdout: str) -> dict:
     result = waitlib.json_result(stdout)
     if not isinstance(result, dict):
         raise ValueError("herdr agent get returned no object")
-    return result.get("pane", result.get("agent", result))
+    info = result.get("pane", result.get("agent", result))
+    if not isinstance(info, dict):
+        raise ValueError("herdr agent get returned no agent object")
+    return info
 
 
 def main() -> int:
@@ -40,13 +43,27 @@ def main() -> int:
                 script.fail(waitlib.EXIT_TIMEOUT, "timeout", {"stage": "startup"})
             script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": stderr.strip()})
 
-    code, _, stderr = poller.run(["herdr", "agent", "wait", args.pane, "--until", "idle", "--timeout", "10000"], timeout=15)
+    code, _, stderr = poller.run(["herdr", "agent", "wait", args.pane, "--timeout", "10000"], timeout=15)
     if code != 0:
         if waitlib.gone_error(stderr):
             script.fail(waitlib.EXIT_GONE, "gone", {"error": stderr.strip()})
         if code == 1:
-            script.fail(waitlib.EXIT_TIMEOUT, "timeout", {"stage": "idle"})
+            script.fail(waitlib.EXIT_TIMEOUT, "timeout", {"stage": "settle"})
         script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": stderr.strip()})
+
+    code, stdout, stderr = poller.run(["herdr", "agent", "get", args.pane])
+    if code != 0:
+        if waitlib.gone_error(stderr):
+            script.fail(waitlib.EXIT_GONE, "gone", {"error": stderr.strip()})
+        script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": stderr.strip()})
+    try:
+        status = info_from(stdout).get("agent_status")
+    except (ValueError, TypeError) as error:
+        script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": str(error)})
+    if status == "blocked":
+        script.fail(waitlib.EXIT_GONE, "blocked", {"status": status})
+    if status not in {"idle", "done"}:
+        script.fail(waitlib.EXIT_TOOL, "tool-failure", {"status": status})
     script.clock.sleep(2)
 
     prompt = ["herdr", "agent", "prompt", args.pane, line, "--wait", "--until", "working", "--timeout", "20000"]
