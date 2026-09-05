@@ -80,7 +80,7 @@ class WaitReviewTests(unittest.TestCase):
     def test_malformed_json_hits_tool_failure_cutoff(self):
         result = run("malformed_json")
         self.assertEqual(result.returncode, 4)
-        self.assertEqual(lines(result)[-1]["event"], "tool-failure")
+        self.assertEqual(events(result), ["watching", "tool-failure"])
 
     def test_reopened_fixture_starts_with_the_thread_resolved(self):
         fixture = json.loads((FIXTURES / "threads_reopened.json").read_text())

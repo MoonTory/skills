@@ -3,6 +3,7 @@ import io
 import json
 import os
 import tempfile
+import time
 import unittest
 from unittest.mock import patch
 
@@ -77,6 +78,24 @@ class WaitlibTests(unittest.TestCase):
             result = poller.relay(["child", "run"])
         self.assertEqual(output.getvalue().splitlines(), [json.dumps(first), json.dumps(second)])
         self.assertEqual(result, (0, [first, second]))
+
+    def test_relay_terminates_a_silent_child(self):
+        envelope = {
+            "script": "child", "event": "ready", "target": "x", "elapsed_s": 0,
+            "at": "2000-01-01T00:00:00Z", "detail": {},
+        }
+        code = f"import json,time; print(json.dumps({envelope!r}), flush=True); time.sleep(30)"
+        script = waitlib.Script("sample")
+        script.parse(["--quiet"])
+        poller = waitlib.Poller(script, waitlib.Runner())
+        output = io.StringIO()
+        started = time.monotonic()
+        with contextlib.redirect_stdout(output):
+            returncode, parsed = poller.relay([sys.executable, "-c", code], timeout=1)
+        self.assertLess(time.monotonic() - started, 7)
+        self.assertLess(returncode, 0)
+        self.assertEqual(parsed, [envelope])
+        self.assertEqual([json.loads(line) for line in output.getvalue().splitlines()], [envelope])
 
     def test_exit_code_mapping(self):
         self.assertEqual((waitlib.EXIT_OK, waitlib.EXIT_GONE, waitlib.EXIT_TIMEOUT, waitlib.EXIT_TOOL), (0, 2, 3, 4))

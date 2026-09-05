@@ -308,43 +308,77 @@ class Poller:
         process = self.runner.start(argv, capture_stderr=False)
         parsed = []
 
-        if isinstance(process, FixtureProcess):
-            lines = process.stdout
-        else:
-            if process.stdout is None:
-                raise RuntimeError("child stdout is not available")
-            deadline = self.script.clock.now() + timeout
-
-            def selected_lines():
-                while True:
-                    remaining = deadline - self.script.clock.now()
-                    if remaining <= 0:
-                        process.terminate()
-                        return
-                    ready, _, _ = select.select([process.stdout], [], [], remaining)
-                    if not ready:
-                        process.terminate()
-                        return
-                    line = process.stdout.readline()
-                    if not line:
-                        return
-                    yield line
-
-            lines = selected_lines()
-
-        for line in lines:
-            print(line.rstrip("\r\n"), flush=True)
+        def relay_line(line: str) -> None:
+            print(line.removesuffix("\r"), flush=True)
             try:
                 parsed.append(json.loads(line))
             except json.JSONDecodeError:
                 pass
 
         if isinstance(process, FixtureProcess):
+            for line in process.stdout:
+                relay_line(line.rstrip("\r\n"))
             returncode = process.poll()
             while returncode is None:
                 returncode = process.poll()
+            return returncode, parsed
+
+        if process.stdout is None:
+            raise RuntimeError("child stdout is not available")
+        fd = process.stdout.fileno()
+        deadline = self.script.clock.now() + timeout
+        buffer = b""
+        timed_out = False
+
+        def relay_complete_lines() -> None:
+            nonlocal buffer
+            while b"\n" in buffer:
+                raw_line, buffer = buffer.split(b"\n", 1)
+                relay_line(raw_line.decode("utf-8", errors="replace"))
+
+        while True:
+            remaining = deadline - self.script.clock.now()
+            if remaining <= 0:
+                timed_out = True
+                break
+            ready, _, _ = select.select([fd], [], [], remaining)
+            if not ready:
+                timed_out = True
+                break
+            chunk = os.read(fd, 65536)
+            if not chunk:
+                break
+            buffer += chunk
+            relay_complete_lines()
+
+        if timed_out:
+            process.terminate()
+            try:
+                returncode = process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                returncode = process.wait()
         else:
-            returncode = process.wait()
+            remaining = max(0, deadline - self.script.clock.now())
+            try:
+                returncode = process.wait(timeout=remaining)
+            except subprocess.TimeoutExpired:
+                process.terminate()
+                try:
+                    returncode = process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    returncode = process.wait()
+
+        while select.select([fd], [], [], 0)[0]:
+            chunk = os.read(fd, 65536)
+            if not chunk:
+                break
+            buffer += chunk
+            relay_complete_lines()
+        if buffer:
+            relay_line(buffer.decode("utf-8", errors="replace"))
+        process.stdout.close()
         return returncode, parsed
 
 
