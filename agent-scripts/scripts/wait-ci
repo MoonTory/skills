@@ -37,9 +37,16 @@ def pause(script, poller, seconds):
         script.fail(waitlib.EXIT_TIMEOUT, "timeout", {})
 
 
-def run_id_from_link(link):
+def run_from_link(link):
     match = re.search(r"/actions/runs/(\d+)", str(link or ""))
-    return int(match.group(1)) if match else None
+    if not match:
+        return None
+    return int(match.group(1)), str(link)[:match.end()]
+
+
+def run_id_from_link(link):
+    run = run_from_link(link)
+    return run[0] if run else None
 
 
 def job_id_from_link(link):
@@ -91,6 +98,8 @@ def pr_mode(script, poller, number, logs):
     view_command = ["gh", "pr", "view", str(number), "--json", "headRefOid,state,mergedAt"]
     checks_command = ["gh", "pr", "checks", str(number), "--json", "name,state,bucket,link,workflow"]
     original_head = None
+    run_reported = False
+    reported = set()
     while True:
         code, view, stderr = json_command(poller, view_command)
         if code != 0:
@@ -112,6 +121,17 @@ def pr_mode(script, poller, number, logs):
         except (ValueError, TypeError) as error:
             poller.failure(str(error))
             continue
+        if not run_reported:
+            run = next((found for row in rows if (found := run_from_link(row.get("link")))), None)
+            if run:
+                script.progress("run-appeared", {"run_id": run[0], "url": run[1]})
+                run_reported = True
+        for row in rows:
+            name = str(row.get("name", ""))
+            bucket = str(row.get("bucket", ""))
+            if bucket in {"pass", "fail", "cancel", "skipping"} and name not in reported:
+                script.progress("job", {"name": name, "bucket": bucket, "link": str(row.get("link", ""))})
+                reported.add(name)
         if not any(job["bucket"] == "pending" for job in jobs):
             return finish_checks(script, poller, rows, original_head, logs)
         if closed:
@@ -158,7 +178,7 @@ def commit_result(script, poller, commit, run_id, run, logs):
 def commit_mode(script, poller, commit, appear_timeout, logs):
     list_command = [
         "gh", "run", "list", "--commit", commit, "--workflow", "ci.yml", "--json",
-        "databaseId,status,conclusion,event,createdAt",
+        "databaseId,status,conclusion,event,createdAt,url",
     ]
     appear_deadline = script.clock.now() + max(0, appear_timeout)
     run_id = None
@@ -174,6 +194,10 @@ def commit_mode(script, poller, commit, appear_timeout, logs):
             if run_id is None:
                 poller.failure("gh run list returned a run without databaseId")
                 continue
+            script.progress("run-appeared", {
+                "run_id": run_id,
+                "url": str(runs[0].get("url", "")),
+            })
             break
         if script.args.timeout == 0 or script.clock.now() >= appear_deadline:
             script.fail(waitlib.EXIT_TIMEOUT, "no-run", {})
@@ -188,6 +212,7 @@ def commit_mode(script, poller, commit, appear_timeout, logs):
         if delay >= overall_remaining:
             script.fail(waitlib.EXIT_TIMEOUT, "timeout", {})
     view_command = ["gh", "run", "view", str(run_id), "--json", "status,conclusion,jobs"]
+    reported = set()
     while True:
         code, run, stderr = json_command(poller, view_command)
         if code != 0:
@@ -195,6 +220,20 @@ def commit_mode(script, poller, commit, appear_timeout, logs):
         if not isinstance(run, dict):
             poller.failure("gh run view returned no object")
             continue
+        raw_jobs = run.get("jobs", [])
+        if isinstance(raw_jobs, list):
+            for job in raw_jobs:
+                if not isinstance(job, dict):
+                    continue
+                name = str(job.get("name", ""))
+                bucket = bucket_for_job(job)
+                if bucket != "pending" and name not in reported:
+                    script.progress("job", {
+                        "name": name,
+                        "bucket": bucket,
+                        "link": str(job.get("url", job.get("link", ""))),
+                    })
+                    reported.add(name)
         if str(run.get("status", "")).lower() == "completed":
             return commit_result(script, poller, commit, run_id, run, logs)
         pause(script, poller, script.args.interval)

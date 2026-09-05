@@ -15,6 +15,14 @@ FIXTURES = ROOT / "fixtures/wait-review"
 MAIN = runpy.run_path(str(SCRIPT))["main"]
 
 
+def lines(result):
+    return [json.loads(line) for line in result.stdout.splitlines()]
+
+
+def events(result):
+    return [line["event"] for line in lines(result)]
+
+
 def run(case, *extra):
     argv = [
         str(SCRIPT), "--pr", "57", "--repo", "acme/widgets",
@@ -33,7 +41,9 @@ def run(case, *extra):
 class WaitReviewTests(unittest.TestCase):
     def test_baseline(self):
         result = run("baseline", "--timeout", "0")
-        output = json.loads(result.stdout)
+        output_lines = lines(result)
+        self.assertEqual(len(output_lines), 1)
+        output = output_lines[0]
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(output["event"], "baseline")
         self.assertEqual(output["target"], "pr:57")
@@ -43,10 +53,15 @@ class WaitReviewTests(unittest.TestCase):
 
     def test_new_threads(self):
         result = run("threads_new")
-        output = json.loads(result.stdout)
+        output = lines(result)
+        final = output[-1]
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(output["event"], "threads")
-        self.assertEqual(output["detail"], {
+        self.assertEqual(events(result), ["watching", "thread", "thread", "threads"])
+        self.assertEqual(output[0]["detail"], {
+            "threads": 0, "reviews": 0, "review_decision": "REVIEW_REQUIRED",
+        })
+        self.assertEqual([line["detail"] for line in output[1:3]], final["detail"]["threads"])
+        self.assertEqual(final["detail"], {
             "threads": [
                 {
                     "id": "t-gustavo", "author": "gustavo", "path": "src/main.py",
@@ -65,7 +80,7 @@ class WaitReviewTests(unittest.TestCase):
     def test_malformed_json_hits_tool_failure_cutoff(self):
         result = run("malformed_json")
         self.assertEqual(result.returncode, 4)
-        self.assertEqual(json.loads(result.stdout)["event"], "tool-failure")
+        self.assertEqual(lines(result)[-1]["event"], "tool-failure")
 
     def test_reopened_fixture_starts_with_the_thread_resolved(self):
         fixture = json.loads((FIXTURES / "threads_reopened.json").read_text())
@@ -82,21 +97,28 @@ class WaitReviewTests(unittest.TestCase):
 
     def test_reopened_thread(self):
         result = run("threads_reopened")
-        output = json.loads(result.stdout)
+        output = lines(result)[-1]
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(output["event"], "threads")
         self.assertEqual(output["detail"]["threads"][0]["id"], "t-reopen")
 
+    def test_thread_resolved_after_baseline(self):
+        result = run("thread_resolved_after_baseline", "--timeout", "60")
+        output = lines(result)
+        self.assertEqual(result.returncode, 3, result.stderr)
+        self.assertEqual(events(result), ["watching", "thread-resolved", "timeout"])
+        self.assertEqual(output[1]["detail"], {"id": "t-existing"})
+
     def test_thread_resolved_between_polls_times_out(self):
         result = run("thread_resolved_between_polls", "--timeout", "60")
         self.assertEqual(result.returncode, 3, result.stderr)
-        self.assertEqual(json.loads(result.stdout)["event"], "timeout")
+        self.assertEqual(events(result), ["watching", "timeout"])
 
     def test_changes_requested(self):
         result = run("changes_requested")
-        output = json.loads(result.stdout)
+        output = lines(result)[-1]
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(output["event"], "changes_requested")
+        self.assertEqual(events(result), ["watching", "changes_requested"])
         self.assertEqual(output["detail"], {
             "review_id": "r-changes", "author": "carol",
             "review_decision": "CHANGES_REQUESTED",
@@ -104,28 +126,28 @@ class WaitReviewTests(unittest.TestCase):
 
     def test_approved(self):
         result = run("approved")
-        output = json.loads(result.stdout)
+        output = lines(result)[-1]
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(output["event"], "approved")
+        self.assertEqual(events(result), ["watching", "approved"])
         self.assertEqual(output["detail"], {
             "review_id": "r-approved", "author": "dana", "review_decision": "APPROVED",
         })
 
     def test_merged(self):
         result = run("merged")
-        output = json.loads(result.stdout)
+        output = lines(result)[-1]
         self.assertEqual(result.returncode, 2, result.stderr)
-        self.assertEqual(output["event"], "merged")
+        self.assertEqual(events(result), ["watching", "merged"])
         self.assertEqual(output["detail"], {"sha": "merge789"})
 
     def test_closed(self):
         result = run("closed")
         self.assertEqual(result.returncode, 2, result.stderr)
-        self.assertEqual(json.loads(result.stdout)["event"], "closed")
+        self.assertEqual(lines(result)[-1]["event"], "closed")
 
     def test_tool_failure_recovers(self):
         result = run("tool_recovered")
-        output = json.loads(result.stdout)
+        output = lines(result)[-1]
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(output["event"], "approved")
         self.assertEqual(output["elapsed_s"], 60)
@@ -145,7 +167,7 @@ class WaitReviewTests(unittest.TestCase):
             '{"review_decision": "REVIEW_REQUIRED", "reviews": ["r-existing"], '
             '"threads": {"t-existing": false}}\n'
         ))
-        self.assertEqual(json.loads(second.stdout)["detail"], {
+        self.assertEqual(lines(second)[-1]["detail"], {
             "threads": 1, "reviews": 1, "review_decision": "REVIEW_REQUIRED",
         })
 

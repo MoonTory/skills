@@ -175,6 +175,8 @@ def main():
 
     baseline_path = Path(args.baseline) if args.baseline else None
     baseline = load_baseline(script, baseline_path) if baseline_path and baseline_path.exists() else None
+    watching = False
+    known_unresolved = set()
 
     while True:
         code, pr, threads, stderr = read_poll(poller, args.pr, args.repo)
@@ -198,6 +200,28 @@ def main():
                         "error": f"could not write baseline: {error}",
                     })
 
+        if args.timeout == 0:
+            script.emit("baseline", baseline_detail(baseline))
+            return 0
+
+        if not watching:
+            known_unresolved = {
+                thread_id for thread_id, resolved in baseline["threads"].items() if not resolved
+            }
+            script.progress("watching", baseline_detail(baseline))
+            watching = True
+
+        current_threads = {
+            str(thread.get("id", "")): thread
+            for thread in threads if isinstance(thread, dict)
+        }
+        for thread_id in list(known_unresolved):
+            thread = current_threads.get(thread_id)
+            if thread and bool(thread.get("isResolved")):
+                script.progress("thread-resolved", {"id": thread_id})
+                known_unresolved.remove(thread_id)
+                baseline["threads"][thread_id] = True
+
         if pr.get("mergedAt"):
             merge_commit = pr.get("mergeCommit") or {}
             sha = str(merge_commit.get("oid", "")) if isinstance(merge_commit, dict) else ""
@@ -205,13 +229,14 @@ def main():
         if str(pr.get("state", "")).upper() == "CLOSED":
             script.fail(waitlib.EXIT_GONE, "closed", {})
 
-        if args.timeout == 0:
-            script.emit("baseline", baseline_detail(baseline))
-            return 0
-
         event = event_for(pr, threads, baseline)
         if event:
-            script.emit(*event)
+            name, detail = event
+            if name == "threads":
+                for thread in detail["threads"]:
+                    script.progress("thread", thread)
+                    known_unresolved.add(thread["id"])
+            script.emit(name, detail)
             return 0
 
         remaining = poller.deadline - script.clock.now()
