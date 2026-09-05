@@ -3,12 +3,21 @@ import io
 import json
 import os
 import tempfile
+import time
 import unittest
 from unittest.mock import patch
 
 import sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), "scripts"))
 import waitlib
+
+
+def lines(result):
+    return [json.loads(line) for line in result.stdout.splitlines()]
+
+
+def events(result):
+    return [line["event"] for line in lines(result)]
 
 
 class WaitlibTests(unittest.TestCase):
@@ -23,6 +32,70 @@ class WaitlibTests(unittest.TestCase):
             script.emit("ok", {"x": 1})
         envelope = json.loads(output.getvalue())
         self.assertEqual(set(envelope), {"script", "event", "target", "elapsed_s", "at", "detail"})
+
+    def test_progress_line_shares_envelope_shape(self):
+        script = waitlib.Script("sample", "thing:x")
+        script.parse([])
+        output = io.StringIO()
+        with patch.object(waitlib, "launch_log") as launch_log, contextlib.redirect_stdout(output):
+            script.progress("job", {"x": 1})
+        parsed = json.loads(output.getvalue())
+        self.assertEqual(set(parsed), {"script", "event", "target", "elapsed_s", "at", "detail"})
+        self.assertEqual(parsed["event"], "job")
+        launch_log.assert_not_called()
+
+    def test_note_writes_stderr(self):
+        script = waitlib.Script("sample")
+        script.parse([])
+        stdout, stderr = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            script.note("hi")
+        self.assertEqual(stderr.getvalue(), "sample: hi\n")
+        self.assertEqual(stdout.getvalue(), "")
+
+    def test_relay_streams_child_lines(self):
+        first = {
+            "script": "child", "event": "one", "target": "x", "elapsed_s": 0,
+            "at": "2000-01-01T00:00:00Z", "detail": {},
+        }
+        second = {
+            "script": "child", "event": "two", "target": "x", "elapsed_s": 1,
+            "at": "2000-01-01T00:00:01Z", "detail": {"x": 1},
+        }
+        with tempfile.NamedTemporaryFile("w", delete=False) as fixture:
+            json.dump({"responses": [{
+                "cmd": "child run",
+                "stdout": f"{json.dumps(first)}\n{json.dumps(second)}\n",
+                "exit": 0,
+            }]}, fixture)
+            path = fixture.name
+        self.addCleanup(os.unlink, path)
+        script = waitlib.Script("sample")
+        script.parse(["--fixture", path, "--quiet"])
+        poller = waitlib.Poller(script, waitlib.Runner(path))
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            result = poller.relay(["child", "run"])
+        self.assertEqual(output.getvalue().splitlines(), [json.dumps(first), json.dumps(second)])
+        self.assertEqual(result, (0, [first, second]))
+
+    def test_relay_terminates_a_silent_child(self):
+        envelope = {
+            "script": "child", "event": "ready", "target": "x", "elapsed_s": 0,
+            "at": "2000-01-01T00:00:00Z", "detail": {},
+        }
+        code = f"import json,time; print(json.dumps({envelope!r}), flush=True); time.sleep(30)"
+        script = waitlib.Script("sample")
+        script.parse(["--quiet"])
+        poller = waitlib.Poller(script, waitlib.Runner())
+        output = io.StringIO()
+        started = time.monotonic()
+        with contextlib.redirect_stdout(output):
+            returncode, parsed = poller.relay([sys.executable, "-c", code], timeout=1)
+        self.assertLess(time.monotonic() - started, 7)
+        self.assertLess(returncode, 0)
+        self.assertEqual(parsed, [envelope])
+        self.assertEqual([json.loads(line) for line in output.getvalue().splitlines()], [envelope])
 
     def test_exit_code_mapping(self):
         self.assertEqual((waitlib.EXIT_OK, waitlib.EXIT_GONE, waitlib.EXIT_TIMEOUT, waitlib.EXIT_TOOL), (0, 2, 3, 4))

@@ -11,9 +11,20 @@ so symlinked installs work from any worktree.
 
 ## Shared contract
 
-Every script writes a final stdout line with one JSON object. It always has `script`, `event`, `target`,
-`elapsed_s`, `at`, and `detail`. Poll progress goes to stderr, starts with the script name, and is hidden by
-`--quiet`. `--pretty` replaces the JSON object with one short line for use at a terminal; agents must not use it.
+Every script writes JSON lines to stdout, one per event, flushed as they happen. All share the six keys `script`,
+`event`, `target`, `elapsed_s`, `at`, and `detail`. The last line is the final envelope whose event decides the exit
+code. Progress lines are not logged to `.launch`. Poll progress goes to stderr, starts with the script name, and is
+hidden by `--quiet`. `--pretty` replaces each JSON object with one short line for use at a terminal; agents must not
+use it.
+
+### Progress events
+
+- `wait-ci`: `run-appeared`, `job`
+- `wait-merged`: `watching`
+- `wait-review`: `watching`, `thread`, `thread-resolved`
+
+A consumer that arms a script under a line-by-line monitor gets one notification per line. Silence never means
+success.
 
 Exit `0` means the event happened. Exit `2` means the target is gone or cannot be used. Exit `3` means timeout.
 Exit `4` means a tool failed after its allowed retries. Scripts use no other exit codes for run results.

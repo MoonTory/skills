@@ -8,6 +8,7 @@ import datetime as dt
 import json
 import os
 import re
+import select
 import shlex
 import socket
 import subprocess
@@ -56,6 +57,7 @@ class FixtureProcess:
         self._polls = int(response.get("polls", 0))
         self._count = 0
         self.terminated = False
+        self.stdout = iter(str(response.get("stdout", "")).splitlines(keepends=True))
 
     def poll(self) -> int | None:
         if self.terminated:
@@ -132,10 +134,11 @@ class Runner:
         except (OSError, urllib.error.URLError) as error:
             return 1, "", str(error)
 
-    def start(self, argv: list[str]) -> subprocess.Popen[str] | FixtureProcess:
+    def start(self, argv: list[str], *, capture_stderr: bool = True) -> subprocess.Popen[str] | FixtureProcess:
         if self.is_fixture:
             return FixtureProcess(self._next(argv))
-        return subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        stderr = subprocess.PIPE if capture_stderr else None
+        return subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=stderr, text=True)
 
     def _fixture_key(self, values: dict[str, Any], path: str) -> str | None:
         if path in values:
@@ -186,9 +189,17 @@ class Script:
         self.started = self.clock.now()
         return self.args
 
-    def progress(self, message: str) -> None:
+    def note(self, message: str) -> None:
         if not self.args or not self.args.quiet:
             print(f"{self.name}: {message}", file=sys.stderr)
+
+    def progress(self, event: str, detail: Any) -> dict[str, Any]:
+        envelope = self.envelope(event, detail)
+        if self.args and self.args.pretty:
+            print(f"{self.name}: {event}", flush=True)
+        else:
+            print(json.dumps(envelope, separators=(",", ":"), ensure_ascii=False), flush=True)
+        return envelope
 
     def envelope(self, event: str, detail: Any) -> dict[str, Any]:
         elapsed = max(0, self.clock.now() - self.started)
@@ -205,9 +216,9 @@ class Script:
     def emit(self, event: str, detail: Any) -> dict[str, Any]:
         envelope = self.envelope(event, detail)
         if self.args and self.args.pretty:
-            print(f"{self.name}: {event} after {envelope['elapsed_s']} s")
+            print(f"{self.name}: {event} after {envelope['elapsed_s']} s", flush=True)
         else:
-            print(json.dumps(envelope, separators=(",", ":"), ensure_ascii=False))
+            print(json.dumps(envelope, separators=(",", ":"), ensure_ascii=False), flush=True)
         launch_log(self.args.brief if self.args else None, {
             "ts": envelope["at"], "script": self.name, "target": self.target,
             "event": event, "elapsed_s": envelope["elapsed_s"], "command": self.command,
@@ -229,7 +240,7 @@ class Poller:
         self.deadline = script.started + max(0, script.args.timeout)
 
     def progress(self, target: str) -> None:
-        self.script.progress(f"poll {target}")
+        self.script.note(f"poll {target}")
 
     def succeeded(self) -> None:
         self.failures = 0
@@ -243,7 +254,7 @@ class Poller:
         remaining = self.deadline - self.script.clock.now()
         if remaining <= 0 or delay >= remaining:
             self.script.fail(EXIT_TIMEOUT, "timeout", detail)
-        self.script.progress(f"tool failure {self.failures}/5; retry in {delay:g} s: {error.strip()}")
+        self.script.note(f"tool failure {self.failures}/5; retry in {delay:g} s: {error.strip()}")
         self.script.clock.sleep(min(delay, remaining))
 
     def run(
@@ -283,9 +294,92 @@ class Poller:
                 return code, stdout, stderr
             self.failure(stderr or f"HTTP request exited {code}")
 
-    def start(self, argv: list[str]) -> subprocess.Popen[str] | FixtureProcess:
+    def start(
+        self,
+        argv: list[str],
+        *,
+        capture_stderr: bool = True,
+    ) -> subprocess.Popen[str] | FixtureProcess:
         self.progress(shlex.join(argv))
-        return self.runner.start(argv)
+        return self.runner.start(argv, capture_stderr=capture_stderr)
+
+    def relay(self, argv: list[str], timeout: float = 30) -> tuple[int, list[Any]]:
+        self.progress(shlex.join(argv))
+        process = self.runner.start(argv, capture_stderr=False)
+        parsed = []
+
+        def relay_line(line: str) -> None:
+            print(line.removesuffix("\r"), flush=True)
+            try:
+                parsed.append(json.loads(line))
+            except json.JSONDecodeError:
+                pass
+
+        if isinstance(process, FixtureProcess):
+            for line in process.stdout:
+                relay_line(line.rstrip("\r\n"))
+            returncode = process.poll()
+            while returncode is None:
+                returncode = process.poll()
+            return returncode, parsed
+
+        if process.stdout is None:
+            raise RuntimeError("child stdout is not available")
+        fd = process.stdout.fileno()
+        deadline = self.script.clock.now() + timeout
+        buffer = b""
+        timed_out = False
+
+        def relay_complete_lines() -> None:
+            nonlocal buffer
+            while b"\n" in buffer:
+                raw_line, buffer = buffer.split(b"\n", 1)
+                relay_line(raw_line.decode("utf-8", errors="replace"))
+
+        while True:
+            remaining = deadline - self.script.clock.now()
+            if remaining <= 0:
+                timed_out = True
+                break
+            ready, _, _ = select.select([fd], [], [], remaining)
+            if not ready:
+                timed_out = True
+                break
+            chunk = os.read(fd, 65536)
+            if not chunk:
+                break
+            buffer += chunk
+            relay_complete_lines()
+
+        if timed_out:
+            process.terminate()
+            try:
+                returncode = process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                returncode = process.wait()
+        else:
+            remaining = max(0, deadline - self.script.clock.now())
+            try:
+                returncode = process.wait(timeout=remaining)
+            except subprocess.TimeoutExpired:
+                process.terminate()
+                try:
+                    returncode = process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    returncode = process.wait()
+
+        while select.select([fd], [], [], 0)[0]:
+            chunk = os.read(fd, 65536)
+            if not chunk:
+                break
+            buffer += chunk
+            relay_complete_lines()
+        if buffer:
+            relay_line(buffer.decode("utf-8", errors="replace"))
+        process.stdout.close()
+        return returncode, parsed
 
 
 def timeout_error(stderr: str) -> bool:
@@ -335,7 +429,7 @@ def wait_for_output(
     matcher = (lambda line: re.search(regex, line) is not None) if regex is not None else (lambda line: str(match) in line)
     if matched_line is None or any(matcher(line) for line in current[baseline_count:]):
         return 0, detail, ""
-    script.progress("ignored match from output present before the wait")
+    script.note("ignored match from output present before the wait")
     while script.clock.now() < deadline:
         script.clock.sleep(min(script.args.interval, max(0, deadline - script.clock.now())))
         code, current, stderr = pane_lines(poller, pane, source)

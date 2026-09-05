@@ -1,6 +1,6 @@
 {"responses":[
-  {"cmd":"gh run list --commit abc123 --workflow ci.yml --json databaseId,status,conclusion,event,createdAt","stdout":"[]","stderr":"","exit":0},
-  {"cmd":"gh run list --commit abc123 --workflow ci.yml --json databaseId,status,conclusion,event,createdAt","stdout":"[{\"databaseId\":45,\"status\":\"queued\",\"conclusion\":\"\",\"event\":\"push\",\"createdAt\":\"2000-01-01T00:00:15Z\"}]","stderr":"","exit":0},
+  {"cmd":"gh run list --commit abc123 --workflow ci.yml --json databaseId,status,conclusion,event,createdAt,url","stdout":"[]","stderr":"","exit":0},
+  {"cmd":"gh run list --commit abc123 --workflow ci.yml --json databaseId,status,conclusion,event,createdAt,url","stdout":"[{\"databaseId\":45,\"status\":\"queued\",\"conclusion\":\"\",\"event\":\"push\",\"createdAt\":\"2000-01-01T00:00:15Z\",\"url\":\"https://github.com/acme/widgets/actions/runs/45\"}]","stderr":"","exit":0},
   {"cmd":"gh run view 45 --json status,conclusion,jobs","stdout":"{\"status\":\"in_progress\",\"conclusion\":\"\",\"jobs\":[]}","stderr":"","exit":0},
   {"cmd":"gh run view 45 --json status,conclusion,jobs","stdout":"{\"status\":\"completed\",\"conclusion\":\"success\",\"jobs\":[{\"name\":\"unit\",\"status\":\"completed\",\"conclusion\":\"success\",\"databaseId\":13,\"url\":\"/actions/runs/45/job/13\"},{\"name\":\"optional\",\"status\":\"completed\",\"conclusion\":\"skipped\",\"databaseId\":14,\"url\":\"/actions/runs/45/job/14\"}]}","stderr":"","exit":0}
 ]}

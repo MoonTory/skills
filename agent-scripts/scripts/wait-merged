@@ -29,12 +29,19 @@ def main():
     script.target = f"pr:{args.pr}"
     poller = waitlib.Poller(script, waitlib.Runner(args.fixture))
     command = ["gh", "pr", "view", str(args.pr), "--json", "state,mergedAt,mergeCommit,headRefOid"]
+    watching = False
     while True:
         code, pr, stderr = read_pr(poller, command)
         if code != 0:
             if waitlib.gone_error(stderr):
                 script.fail(waitlib.EXIT_GONE, "closed", {})
             script.fail(waitlib.EXIT_TOOL, "tool-failure", {"error": stderr.strip() or f"command exited {code}"})
+        if not watching:
+            script.progress("watching", {
+                "head": str(pr.get("headRefOid", "")),
+                "state": str(pr.get("state", "")),
+            })
+            watching = True
         if pr.get("mergedAt"):
             merge_commit = pr.get("mergeCommit") or {}
             script.emit("merged", {
