@@ -184,7 +184,23 @@ each track's teamlead and workers in that tab.
 tab and pane ids are live ids. after a close, restart, or long handoff, resolve them again with `tab list` and
 `pane list` before placing more work.
 
-## spawn a pi agent (always interactive)
+## spawn a Claude builder (default)
+
+Claude Code is the default agent for delegated work unless the user or workflow names another. Launch it as a
+persistent interactive process in its pane, named so peers can find it:
+
+```bash
+herdr pane run "$NEW_PANE" "cd <worktree> && claude --model opus --effort medium --permission-mode auto -n <name>"
+```
+
+Send the task through Claude's session messaging, not by typing into the pane: `ListAgents` to confirm the name, then
+`SendMessage({to: "<name>", message: "Read <brief path> and do it. Message <lead name> with your report when done."})`.
+Keep the brief in a file and send a one-line pointer. The builder messages back when it finishes, so there is no
+settle loop and no pane polling. Send follow-ups to the same name. Close the pane when its report is accepted.
+
+## spawn a pi agent (optional)
+
+Use pi only when the user or workflow selects it.
 
 always start pi as a persistent interactive process in its pane — run `pi` (optionally with `--model` and `--tools`) with no prompt argument, then send tasks to the pane. never use `pi -p "<prompt>"` or pass the task on the command line: one-shot mode exits after one response and may remove the pane, preventing follow-ups.
 
@@ -225,8 +241,7 @@ then detect completion with `herdr agent wait "$PANE" --timeout 1800000` as show
 
 ## spawn another supported agent
 
-Pi is the default when the workflow supplies a Pi skill profile. A workflow or user may instead select another
-supported agent such as Claude or Codex. Start that agent as a persistent interactive process in the assigned pane,
+A workflow or user may select another supported agent such as Codex. Start that agent as a persistent interactive process in the assigned pane,
 wait for its ready state, and submit the task through Herdr so the pane stays available for follow-ups and its final
 report remains visible. Never use headless or one-shot forms such as `claude -p` or `codex exec` for a role that the
 workflow placed in Herdr.
@@ -421,6 +436,20 @@ run `herdr agent wait "$PANE" --timeout 1800000` as shown in "waiting for an age
 # `herdr agent wait "$PANE" --timeout 1800000` returned done (or idle/blocked)
 herdr pane read 1-1 --source recent --lines 100
 ```
+
+## traps
+
+- keep each `herdr pane run` command to a few hundred characters. put the task in a brief file and send a one-line
+  pointer; a 3.9 KB launch line made Claude miss its startup three times.
+- `herdr agent prompt --wait --until working` times out when the target is already working, but the prompt still
+  queues. do not resend it.
+- when launching Claude in a git worktree, pass `--mcp-config` as an absolute path. a relative path silently resolves
+  to nothing and the agent starts with no MCP servers.
+- before typing into a pane, read its editor line; a person may be typing there. grey text in a finished Claude pane's
+  input box may be Claude's own prompt suggestion. to tell, send one character: if the whole line becomes that
+  character, it was a suggestion.
+- when a Claude launch fails, read the new session's jsonl under `~/.claude/projects/<dir>/` instead of opening probe
+  panes.
 
 ## notes
 
