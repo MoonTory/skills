@@ -93,53 +93,50 @@ Only Orchestrator changes the delegate. Planner, Builder, and Reviewer publish t
 
 If the MCP issue-update tool does not expose `delegate`, `delegateId`, or the equivalent agent field, treat it as a tool limitation. Do not put the app in the human assignee field. Use an authorized Linear API or UI path for delegation, or stop the pilot until the tool supports it.
 
-## Role-isolated Pi MCP profiles
+## Role-isolated Pi profiles
 
-Keep one local MCP identity profile per Pi publishing role:
-
-```text
-.pi/mcp-profiles/planner.json
-.pi/mcp-profiles/builder.json
-.pi/mcp-profiles/reviewer.json
-```
-
-Each exposes one generic server and differs only in the bearer-token variable:
+Give each Pi publishing role its own profile in `pi-profiles.json`: the global `~/.pi/agent/pi-profiles.json`, or a
+trusted project's `.pi/pi-profiles.json`. Each role profile lists its skills and carries exactly one `linear` server.
+Profiles differ only in skills and the bearer-token variable:
 
 ```json
 {
-  "mcpServers": {
-    "linear": {
-      "url": "https://mcp.linear.app/mcp",
-      "auth": "bearer",
-      "bearerTokenEnv": "PROJECT_LINEAR_BUILDER_ACCESS_TOKEN",
-      "lifecycle": "lazy"
+  "linear-build": {
+    "skills": ["~/.agents/skills/build", "~/.agents/skills/linear", "~/.agents/skills/linear-teamlead"],
+    "mcpServers": {
+      "linear": {
+        "url": "https://mcp.linear.app/mcp",
+        "headers": { "Authorization": "Bearer ${PROJECT_LINEAR_BUILDER_ACCESS_TOKEN}" }
+      }
     }
   }
 }
 ```
 
-Launch Pi with exactly one MCP identity profile and the matching isolated skill profile. These are separate controls:
-`--skill-profile` selects the instruction catalog, while `--mcp-config` selects the Linear actor. These examples assume
-the local skill catalog defines `linear-plan`, `linear-build`, and `linear-review` profiles:
+Store only variable names in the file, never tokens. Launch Pi with exactly one role profile. These examples assume
+`linear-plan`, `linear-build`, and `linear-review` profiles carrying the Planner, Builder, and Reviewer tokens:
 
 ```bash
-pi --no-skills --skill-profile linear-plan --mcp-config .pi/mcp-profiles/planner.json
-pi --no-skills --skill-profile linear-build --mcp-config .pi/mcp-profiles/builder.json
-pi --no-skills --skill-profile linear-review --mcp-config .pi/mcp-profiles/reviewer.json
+pi --no-skills --profile linear-plan
+pi --no-skills --profile linear-build
+pi --no-skills --profile linear-review
 ```
 
-An Explorer does not publish Linear evidence. Start it with the plain `explore` skill profile and no role-bearing
-`--mcp-config`.
+An Explorer does not publish Linear evidence. Start it with the plain `explore` profile, which carries no Linear
+server.
 
-`--mcp-config` participates in the adapter's config merge; it does not replace the project root `.mcp.json`. Keep role identities out of the root `.mcp.json`, or they may appear in every role session and override the generic `linear` entry. A normal Pi session without a role profile should have no role-bearing Linear connection.
+A normal Pi session without a role profile should have no role-bearing Linear connection. Never put `linear` in
+`~/.pi/agent/mcp.json` or a project's `.pi/mcp.json`, or it will reach every session.
 
-Keep personal profiles local. Prefer `.git/info/exclude` for a private per-clone setup:
+Git-ignored project files do not exist in worktrees. Put profiles that worktree agents need in the global
+`~/.pi/agent/pi-profiles.json`.
+
+Keep personal project files local. Prefer `.git/info/exclude` for a private per-clone setup:
 
 ```gitignore
 /.mcp.json
 /.pi/mcp.json
-/.pi/mcp-profiles/
-/.pi/mcp-traces/
+/.pi/pi-profiles.json
 ```
 
 Use the repository `.gitignore` only when the whole project has adopted these local files as a shared convention.
