@@ -204,26 +204,27 @@ Use pi only when the user or workflow selects it.
 
 always start pi as a persistent interactive process in its pane — run `pi` (optionally with `--model` and `--tools`) with no prompt argument, then send tasks to the pane. never use `pi -p "<prompt>"` or pass the task on the command line: one-shot mode exits after one response and may remove the pane, preventing follow-ups.
 
-when pi exposes `--skill-profile`, start a terminal worker with `--no-skills --skill-profile <profile>`. the
+when pi exposes `--profile`, start a terminal worker with `--no-skills --profile <profile>`. the
 `--no-skills` flag disables normal skill discovery; without it, the selected profile is additive and unrelated skills
 remain visible. match the terminal role to the profile: Explorer → `explore`, Planner → `plan`, Builder → `build`,
-Reviewer → `review`. an active workflow may define a more specific profile, such as a Linear-bound variant. the skill
-profile selects instructions only; keep model choice, tool limits, and any identity-bearing MCP profile as separate
-launch controls. `--tools <list>` is an allowlist and removes every MCP tool as well; a role that must keep an MCP
+Reviewer → `review`. an active workflow may define a more specific profile, such as a Linear-bound variant. a profile
+selects skills and may also carry MCP servers, such as a role's Linear identity; keep model choice and tool limits as
+separate launch controls. `--tools <list>` is an allowlist and removes every MCP tool as well; a role that must keep an MCP
 server uses `--exclude-tools <list>` instead.
 
-always specify codex models with the full `openai-codex/` provider prefix. a bare model such as `gpt-5.6-sol` can resolve to another provider and fail with a misleading missing-api-key error. available codex model ids are:
+always specify codex models with the full `openai-codex/` provider prefix. a bare model such as `gpt-6-astra` can resolve to another provider and fail with a misleading missing-api-key error. available codex model ids are:
 
-- `openai-codex/gpt-5.6-luna`
-- `openai-codex/gpt-5.6-sol`
-- `openai-codex/gpt-5.6-terra`
+- `openai-codex/gpt-6-astra`
+- `openai-codex/gpt-6.1-sol`
+- `openai-codex/gpt-6-sol`
+- `openai-codex/gpt-6-luna`
 
 use `pi --list-models | grep '^openai-codex'` to verify this list if model availability may have changed. omit `--model` to use pi's configured default.
 
 ```bash
 NEW_PANE=$(herdr pane split 1-2 --direction right --no-focus | python3 -c 'import sys,json; print(json.load(sys.stdin)["result"]["pane"]["pane_id"])')
 
-herdr pane run "$NEW_PANE" "pi --no-skills --skill-profile review --model openai-codex/gpt-5.6-terra --tools read,grep,find,ls"
+herdr pane run "$NEW_PANE" "pi --no-skills --profile review --model openai-codex/gpt-6.1-sol --tools read,grep,find,ls"
 
 # agent_status can become idle before the TUI is ready to accept submitted input.
 # Wait for a startup marker as well as idle before sending the task.
@@ -411,7 +412,7 @@ start pi interactively (never `pi -p`) so the agent stays alive for follow-ups:
 
 ```bash
 NEW_PANE=$(herdr pane split 1-2 --direction down --no-focus | python3 -c 'import sys,json; print(json.load(sys.stdin)["result"]["pane"]["pane_id"])')
-herdr pane run "$NEW_PANE" "pi --no-skills --skill-profile review --model openai-codex/gpt-5.6-terra --tools read,grep,find,ls"
+herdr pane run "$NEW_PANE" "pi --no-skills --profile review --model openai-codex/gpt-6.1-sol --tools read,grep,find,ls"
 herdr pane wait-output "$NEW_PANE" --match "Pi can explain its own features" --timeout 15000
 herdr agent wait "$NEW_PANE" --until idle --timeout 10000
 herdr agent prompt "$NEW_PANE" "review the test coverage in src/api/" --wait --until working --timeout 20000
