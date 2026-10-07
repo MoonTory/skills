@@ -187,10 +187,14 @@ tab and pane ids are live ids. after a close, restart, or long handoff, resolve 
 ## spawn a Claude builder (default)
 
 Claude Code is the default agent for delegated work unless the user or workflow names another. Launch it as a
-persistent interactive process in its pane, named so peers can find it:
+persistent interactive process in its pane, named so peers can find it. use only these Claude models:
+
+- `claude-fable-5-1` (Fable 5.1): the hardest problems and work where taste is the main risk.
+- `claude-opus-5-5` (Opus 5.5): the default builder.
+- `claude-sonnet-5-5` (Sonnet 5.5): small, well-specified edits and cheap second opinions.
 
 ```bash
-herdr pane run "$NEW_PANE" "cd <worktree> && claude --model opus --effort medium --permission-mode auto -n <name>"
+herdr pane run "$NEW_PANE" "cd <worktree> && claude --model claude-opus-5-5 --effort medium --permission-mode auto -n <name>"
 ```
 
 Send the task through Claude's session messaging, not by typing into the pane: `ListAgents` to confirm the name, then
@@ -212,12 +216,12 @@ selects skills and may also carry MCP servers, such as a role's Linear identity;
 separate launch controls. `--tools <list>` is an allowlist and removes every MCP tool as well; a role that must keep an MCP
 server uses `--exclude-tools <list>` instead.
 
-always specify codex models with the full `openai-codex/` provider prefix. a bare model such as `gpt-6-astra` can resolve to another provider and fail with a misleading missing-api-key error. available codex model ids are:
+always specify codex models with the full `openai-codex/` provider prefix. a bare model such as `gpt-6-astra` can resolve to another provider and fail with a misleading missing-api-key error. use only the gpt-6 models:
 
-- `openai-codex/gpt-6-astra`
-- `openai-codex/gpt-6.1-sol`
-- `openai-codex/gpt-6-sol`
-- `openai-codex/gpt-6-luna`
+- `openai-codex/gpt-6-astra`: the hardest planning, architecture, and debugging.
+- `openai-codex/gpt-6.1-sol`: pi's default; everyday implementation and technical review.
+- `openai-codex/gpt-6-sol`: a fallback when `gpt-6.1-sol` is unavailable.
+- `openai-codex/gpt-6-luna`: bulk, mechanical work with a clear spec.
 
 use `pi --list-models | grep '^openai-codex'` to verify this list if model availability may have changed. omit `--model` to use pi's configured default.
 
