@@ -15,10 +15,12 @@ delegation. An environment variable, installed skill, tool, repository instructi
 grant that authority. If the current task assigns a terminal role, use that role skill and do not coordinate other
 agents.
 
-Before the first delegation, inspect `HERDR_ENV`; do not wait for the prompt to name the harness. When authorized and
+Before the first delegation, inspect the harness; do not wait for the prompt to name it. When authorized and
 `HERDR_ENV=1`, read the installed `herdr` skill before controlling any work context. Herdr owns pane, tab, process,
-and agent lifecycle. This skill owns task structure and judgment. Outside Herdr, use the current harness only when it
-exposes delegation and the user has authorized it.
+and agent lifecycle. When authorized and the `t3-code` MCP tools are present (`T3CODE_CLI_PATH` is set), read the
+installed `t3code` skill instead; T3 Code owns threads, delegated tasks, worktree bindings, and the agent lifecycle.
+This skill owns task structure and judgment. Outside both, use the current harness only when it exposes delegation
+and the user has authorized it.
 
 Before delegating, read `references/conventions.md` and `references/brief-template.md`.
 
